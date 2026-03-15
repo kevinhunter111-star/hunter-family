@@ -221,6 +221,8 @@ async function analyze(){
   }catch(e){clearInterval(iv);showErr(`<strong>${e.message}</strong><br><br><span style="color:#3a5a7a;font-size:11px">Make sure your Twelve Data key is correct. Sign up free at twelvedata.com</span>`);}
 }
 document.getElementById("tickerInput").addEventListener("keydown",e=>{if(e.key==="Enter")analyze();});
+// Listen for ticker messages from parent hub
+window.addEventListener("message",e=>{if(e.data&&e.data.action==="analyze"&&e.data.ticker){document.getElementById("tickerInput").value=e.data.ticker;analyze();}});
 init();
 </script>
 </body>

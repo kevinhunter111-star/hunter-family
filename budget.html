@@ -1362,9 +1362,16 @@ window.checkBudgetPassword = async function() {
 document.addEventListener("DOMContentLoaded", () => {
   const pwInput = document.getElementById("budget-pw");
   if (pwInput) pwInput.addEventListener("keydown", e => { if(e.key==="Enter") window.checkBudgetPassword(); });
-  if (sessionStorage.getItem("hunter_budget_auth")==="1") {
+  
+  // Auto-login if: already authenticated this session OR loaded inside an iframe (hub handles auth)
+  const inIframe = window.self !== window.top;
+  const alreadyAuthed = sessionStorage.getItem("hunter_budget_auth") === "1";
+  
+  if (inIframe || alreadyAuthed) {
+    sessionStorage.setItem("hunter_budget_auth", "1");
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("app").style.display = "block";
+    ReactDOM.render(React.createElement(AuthWrapper), document.getElementById("app"));
   }
 });
 
