@@ -2,399 +2,225 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>Hunter Swing Trade System</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#080e1a;font-family:'IBM Plex Mono',monospace;color:#e0eaff;min-height:100vh}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
 input:focus{outline:none}
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#1e3050;border-radius:3px}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#1e3050;border-radius:3px}
 .fade-up{animation:fadeUp 0.35s ease forwards}
 .card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px}
 .spin{width:18px;height:18px;border:2px solid rgba(255,255,255,0.1);border-top:2px solid #00c87a;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:middle}
-button{cursor:pointer;transition:opacity 0.15s}
-button:hover{opacity:0.85}
+button{cursor:pointer;transition:opacity 0.15s}button:hover{opacity:0.85}
 </style>
 </head>
 <body>
-
-<!-- HEADER -->
-<div style="border-bottom:1px solid rgba(255,255,255,0.06);padding:18px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:rgba(0,0,0,0.3)">
+<div style="border-bottom:1px solid rgba(255,255,255,0.06);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:rgba(0,0,0,0.3)">
   <div>
-    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">
-      <span style="color:#00c87a">HUNTER</span> <span style="color:#4a8cd4">SWING TRADE SYSTEM</span>
-    </div>
-    <div style="font-size:9px;color:#2a4a6a;letter-spacing:2px;margin-top:2px">AI-POWERED · WEEKLY CONTRACTS · RSI · MACD · BOLLINGER · BACKTEST</div>
+    <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800"><span style="color:#00c87a">HUNTER</span> <span style="color:#4a8cd4">SWING TRADE SYSTEM</span></div>
+    <div style="font-size:9px;color:#2a4a6a;letter-spacing:2px;margin-top:2px">WEEKLY CONTRACTS · RSI · MACD · BOLLINGER BANDS · BACKTEST</div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <div style="width:8px;height:8px;background:#00c87a;border-radius:50%;animation:blink 2s infinite"></div>
-    <span style="font-size:9px;color:#2a4a6a;letter-spacing:1px">POWERED BY CLAUDE AI · NO API KEY NEEDED</span>
-  </div>
+  <div style="font-size:9px;color:#2a4a6a">PURE JS CALCULATIONS · NO AI NEEDED</div>
 </div>
-
-<div style="max-width:1100px;margin:0 auto;padding:28px 32px">
-
-  <!-- SEARCH -->
-  <div style="margin-bottom:14px">
-    <div style="display:flex;gap:10px">
-      <div style="flex:1;display:flex;align-items:center;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:0 16px;gap:10px">
-        <span style="color:#3a5a7a;font-size:18px">$</span>
-        <input id="tickerInput" placeholder="Enter ticker — AAPL, NVDA, TSLA, COST, AMD..." maxlength="10"
-          style="flex:1;background:none;border:none;color:#e0eaff;font-size:15px;padding:15px 0;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase"/>
-      </div>
-      <button onclick="analyze()"
-        style="padding:15px 32px;background:linear-gradient(135deg,#00a860,#00c87a);border:none;border-radius:10px;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:2px;font-weight:700;min-width:130px">
-        ANALYZE
-      </button>
+<div style="max-width:1100px;margin:0 auto;padding:20px 24px">
+  <div id="setupBox" style="background:rgba(0,200,120,0.06);border:2px solid rgba(0,200,120,0.3);border-radius:14px;padding:20px;margin-bottom:20px">
+    <div style="font-size:11px;color:#00c87a;letter-spacing:1px;font-weight:600;margin-bottom:10px">FREE API KEY REQUIRED — TWELVE DATA (800 calls/day free · No credit card)</div>
+    <div style="font-size:12px;color:#7ab3e8;line-height:1.8;margin-bottom:14px">
+      1. Go to <strong style="color:#00c87a">twelvedata.com</strong> and click <strong style="color:#e0eaff">Get free API key</strong><br>
+      2. Sign up with email — instant, no credit card needed<br>
+      3. Copy your API key from the dashboard and paste below
     </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <input id="apiInput" type="text" placeholder="Paste Twelve Data API key here..."
+        style="flex:1;min-width:200px;background:rgba(255,255,255,0.08);border:1px solid rgba(0,200,120,0.4);border-radius:8px;color:#e0eaff;font-size:13px;padding:12px 14px;font-family:'IBM Plex Mono',monospace"/>
+      <button onclick="saveKey()" style="padding:12px 22px;background:#00c87a;border:none;border-radius:8px;color:#080e1a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px">SAVE KEY</button>
+    </div>
+    <div id="keyMsg" style="margin-top:8px;font-size:11px;color:#3a5a7a"></div>
   </div>
-
-  <!-- WATCHLIST -->
-  <div id="watchlist" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px"></div>
-
-  <!-- ERROR -->
-  <div id="errorBox" style="display:none;background:rgba(224,64,64,0.1);border:1px solid rgba(224,64,64,0.3);border-radius:10px;padding:14px 18px;color:#e04040;font-size:12px;margin-bottom:18px;line-height:1.8"></div>
-
-  <!-- LOADING -->
-  <div id="loadingBox" style="display:none;text-align:center;padding:70px 20px">
-    <div class="spin" style="width:28px;height:28px;margin:0 auto 18px;display:block"></div>
-    <div id="loadMsg" style="font-size:11px;letter-spacing:2px;animation:pulse 1.5s infinite;color:#3a5a7a">ANALYZING WITH AI...</div>
-    <div style="margin-top:12px;font-size:10px;color:#1e3050;max-width:300px;margin:12px auto 0;line-height:1.6">Claude AI is fetching live market data and calculating RSI, MACD, and Bollinger Bands...</div>
+  <div style="display:flex;gap:10px;margin-bottom:14px">
+    <div style="flex:1;display:flex;align-items:center;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:0 14px;gap:8px">
+      <span style="color:#3a5a7a;font-size:16px">$</span>
+      <input id="tickerInput" placeholder="Enter ticker — AAPL, NVDA, TSLA, COST..." maxlength="10"
+        style="flex:1;background:none;border:none;color:#e0eaff;font-size:14px;padding:13px 0;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase"/>
+    </div>
+    <button onclick="analyze()" style="padding:13px 26px;background:linear-gradient(135deg,#00a860,#00c87a);border:none;border-radius:10px;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:2px;font-weight:700;min-width:120px">ANALYZE</button>
   </div>
-
-  <!-- RESULTS -->
+  <div id="watchlist" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px"></div>
+  <div id="errBox" style="display:none;background:rgba(224,64,64,0.1);border:1px solid rgba(224,64,64,0.3);border-radius:10px;padding:14px 16px;color:#e04040;font-size:12px;margin-bottom:16px;line-height:1.8"></div>
+  <div id="loadBox" style="display:none;text-align:center;padding:60px 20px">
+    <div class="spin" style="width:26px;height:26px;margin:0 auto 16px;display:block"></div>
+    <div id="loadMsg" style="font-size:11px;letter-spacing:2px;animation:pulse 1.5s infinite;color:#3a5a7a">FETCHING DATA...</div>
+  </div>
   <div id="results"></div>
-
 </div>
-
 <script>
-const WATCHLIST = ["AAPL","NVDA","TSLA","COST","AMZN","META","AMD","MSFT","GOOGL","SPY","QQQ","NFLX"];
-
-function init() {
-  document.getElementById("watchlist").innerHTML = WATCHLIST.map(s => `
-    <button onclick="quick('${s}')"
-      style="padding:7px 15px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#7ab3e8;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px"
-      onmouseover="this.style.borderColor='#00c87a';this.style.color='#00c87a'"
-      onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='#7ab3e8'">${s}</button>`).join("");
+const WL=["AAPL","NVDA","TSLA","COST","AMZN","META","AMD","MSFT","GOOGL","SPY","QQQ","NFLX"];
+let KEY=localStorage.getItem("td_api_key")||"";
+function init(){
+  document.getElementById("watchlist").innerHTML=WL.map(s=>`<button onclick="quick('${s}')" style="padding:6px 13px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#7ab3e8;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px" onmouseover="this.style.borderColor='#00c87a';this.style.color='#00c87a'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='#7ab3e8'">${s}</button>`).join("");
+  if(KEY){document.getElementById("setupBox").style.borderColor="rgba(0,200,120,0.15)";document.getElementById("keyMsg").innerHTML='<span style="color:#00c87a">&#10003; API key saved</span>';}
 }
-
-function quick(s) { document.getElementById("tickerInput").value = s; analyze(); }
-
-function showError(msg) {
-  document.getElementById("loadingBox").style.display = "none";
-  document.getElementById("errorBox").style.display = "block";
-  document.getElementById("errorBox").innerHTML = msg;
+function saveKey(){
+  const k=document.getElementById("apiInput").value.trim();
+  if(!k){document.getElementById("keyMsg").innerHTML='<span style="color:#e04040">Please paste your key</span>';return;}
+  KEY=k;localStorage.setItem("td_api_key",k);
+  document.getElementById("keyMsg").innerHTML='<span style="color:#00c87a">&#10003; Saved! Enter a ticker to analyze.</span>';
+  document.getElementById("setupBox").style.borderColor="rgba(0,200,120,0.15)";
+  document.getElementById("apiInput").value="";
 }
-
-function fmt(n) {
-  if (n === null || n === undefined || isNaN(n)) return "N/A";
-  return new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" }).format(n);
+function quick(s){document.getElementById("tickerInput").value=s;analyze();}
+function calcRSI(c,p=14){if(c.length<p+1)return 50;let g=0,l=0;for(let i=c.length-p;i<c.length;i++){const d=c[i]-c[i-1];if(d>0)g+=d;else l-=d;}const ag=g/p,al=l/p;if(al===0)return 100;return Math.round(100-100/(1+ag/al));}
+function calcEMA(d,p){const k=2/(p+1);let e=d[0];for(let i=1;i<d.length;i++)e=d[i]*k+e*(1-k);return e;}
+function calcMACD(c){if(c.length<35)return{macd:0,signal:0,hist:0};const mv=[];for(let i=26;i<=c.length;i++){const sl=c.slice(0,i);mv.push(calcEMA(sl.slice(-12),12)-calcEMA(sl.slice(-26),26));}const ml=mv[mv.length-1],sl=mv.length>=9?calcEMA(mv.slice(-9),9):ml*0.9;return{macd:+ml.toFixed(4),signal:+sl.toFixed(4),hist:+(ml-sl).toFixed(4)};}
+function calcBB(c,p=20){if(c.length<p)return null;const s=c.slice(-p),m=s.reduce((a,b)=>a+b)/p,std=Math.sqrt(s.reduce((a,b)=>a+Math.pow(b-m,2),0)/p);return{upper:+(m+2*std).toFixed(2),mid:+m.toFixed(2),lower:+(m-2*std).toFixed(2)};}
+function genSig(rsi,macd,bb,vr,price){
+  let sc=0,det=[];
+  if(rsi<30){sc+=3;det.push({l:"RSI Oversold",v:rsi,bull:true,n:"Strong bounce candidate"})}
+  else if(rsi<45){sc+=2;det.push({l:"RSI Bullish",v:rsi,bull:true,n:"Momentum building"})}
+  else if(rsi>70){sc-=3;det.push({l:"RSI Overbought",v:rsi,bull:false,n:"PUT setup or exit CALL"})}
+  else if(rsi>55){sc-=1;det.push({l:"RSI Elevated",v:rsi,bull:false,n:"Mild bearish pressure"})}
+  else{det.push({l:"RSI Neutral",v:rsi,bull:null,n:"No clear signal"})}
+  if(macd.hist>0&&macd.macd>macd.signal){sc+=3;det.push({l:"MACD Bullish Cross",v:macd.hist.toFixed(4),bull:true,n:"Upward momentum confirmed"})}
+  else if(macd.hist>0){sc+=1;det.push({l:"MACD Positive",v:macd.hist.toFixed(4),bull:true,n:"Mild bullish"})}
+  else if(macd.hist<0&&macd.macd<macd.signal){sc-=3;det.push({l:"MACD Bearish Cross",v:macd.hist.toFixed(4),bull:false,n:"Downward momentum confirmed"})}
+  else{sc-=1;det.push({l:"MACD Negative",v:macd.hist.toFixed(4),bull:false,n:"Mild bearish"})}
+  if(bb&&price){const pB=(price-bb.lower)/(bb.upper-bb.lower);
+    if(pB<0.10){sc+=3;det.push({l:"BB Lower Band",v:(pB*100).toFixed(0)+"%B",bull:true,n:"Mean reversion CALL setup"})}
+    else if(pB<0.25){sc+=2;det.push({l:"BB Lower Range",v:(pB*100).toFixed(0)+"%B",bull:true,n:"Oversold vs range"})}
+    else if(pB>0.90){sc-=3;det.push({l:"BB Upper Band",v:(pB*100).toFixed(0)+"%B",bull:false,n:"Mean reversion PUT setup"})}
+    else if(pB>0.75){sc-=1;det.push({l:"BB Upper Range",v:(pB*100).toFixed(0)+"%B",bull:false,n:"Approaching overbought"})}
+    else{det.push({l:"BB Mid Range",v:(pB*100).toFixed(0)+"%B",bull:null,n:"No BB edge"})}}
+  if(vr>1.5&&sc>0){sc+=1;det.push({l:"Volume Spike",v:vr+"x",bull:true,n:"Institutional confirmation"})}
+  else if(vr>1.5&&sc<0){sc-=1;det.push({l:"Volume Spike",v:vr+"x",bull:false,n:"Selling pressure confirmed"})}
+  else{det.push({l:"Normal Volume",v:vr+"x",bull:null,n:"Average activity"})}
+  const conf=Math.min(10,Math.max(1,Math.round(Math.abs(sc)*1.2)));
+  let rat,dir,col,bg;
+  if(sc>=7){rat="STRONG BUY";dir="CALL";col="#00c87a";bg="rgba(0,200,120,0.12)"}
+  else if(sc>=4){rat="BUY";dir="CALL";col="#4bc99a";bg="rgba(75,201,154,0.1)"}
+  else if(sc>=2){rat="WEAK BUY";dir="CALL";col="#a3e4c8";bg="rgba(163,228,200,0.08)"}
+  else if(sc>=-1){rat="NEUTRAL";dir="WAIT";col="#7ab3e8";bg="rgba(122,179,232,0.08)"}
+  else if(sc>=-3){rat="WEAK SELL";dir="PUT";col="#f5a070";bg="rgba(245,160,112,0.1)"}
+  else if(sc>=-6){rat="SELL";dir="PUT";col="#f07030";bg="rgba(240,112,48,0.12)"}
+  else{rat="STRONG SELL";dir="PUT";col="#e04040";bg="rgba(224,64,64,0.12)"}
+  const entry=Math.abs(sc)>=6?"Enter NOW — strong conviction":Math.abs(sc)>=4?"Enter Mon-Tue for Fri expiry":Math.abs(sc)>=2?"Wait for confirmation candle":"Sit out this week";
+  const strike=Math.abs(sc)>=6?"ATM or 1 strike OTM":Math.abs(sc)>=3?"ATM — best risk/reward":"ATM only — weak signal";
+  return{sc,conf,rat,dir,col,bg,det,entry,strike};
 }
-
-function oc(o) { return o==="WIN"?"#00c87a":o==="LOSS"?"#e04040":o==="CORRECT"?"#4bc99a":"#5a7a9a"; }
-function ob(o) { return o==="WIN"?"rgba(0,200,120,0.08)":o==="LOSS"?"rgba(224,64,64,0.08)":"rgba(255,255,255,0.02)"; }
-
-async function analyze() {
-  const sym = document.getElementById("tickerInput").value.trim().toUpperCase();
-  if (!sym) { showError("Please enter a ticker symbol."); return; }
-
-  document.getElementById("loadingBox").style.display = "block";
-  document.getElementById("results").innerHTML = "";
-  document.getElementById("errorBox").style.display = "none";
-
-  const msgs = [
-    "FETCHING LIVE MARKET DATA...",
-    "CALCULATING RSI (14-period)...",
-    "RUNNING MACD ANALYSIS...",
-    "BOLLINGER BANDS (20-period)...",
-    "RUNNING HISTORICAL BACKTEST...",
-    "GENERATING SIGNAL...",
-    "BUILDING RECOMMENDATION..."
-  ];
-  let mi = 0;
-  const iv = setInterval(() => {
-    mi = (mi+1) % msgs.length;
-    const el = document.getElementById("loadMsg");
-    if (el) el.textContent = msgs[mi];
-  }, 1200);
-
-  const prompt = `You are an expert swing trader and technical analyst. Analyze the stock ticker "${sym}" for a swing trader who trades weekly options contracts (1-7 DTE).
-
-Use your web search tool to find the CURRENT price and recent price history for ${sym}.
-
-Then calculate and return a complete technical analysis in the following JSON format ONLY (no other text, no markdown, no backticks):
-
-{
-  "symbol": "${sym}",
-  "companyName": "Full company name",
-  "currentPrice": 123.45,
-  "previousClose": 122.00,
-  "dayHigh": 124.00,
-  "dayLow": 121.00,
-  "week52High": 150.00,
-  "week52Low": 90.00,
-  "marketCap": "500B",
-  "volume": "45.2M",
-  "avgVolume": "38.1M",
-  "rsi14": 45,
-  "macdLine": 0.45,
-  "macdSignal": 0.38,
-  "macdHistogram": 0.07,
-  "bbUpper": 130.00,
-  "bbMiddle": 123.00,
-  "bbLower": 116.00,
-  "bbPercentB": 65,
-  "volumeRatio": 1.2,
-  "overallSignal": "BUY",
-  "direction": "CALL",
-  "signalScore": 6,
-  "confidence": 7,
-  "signalColor": "#4bc99a",
-  "entryTiming": "Enter Mon-Tue for Fri weekly expiry",
-  "strikeRecommendation": "ATM — balanced risk/reward",
-  "keyLevels": {
-    "support1": 120.00,
-    "support2": 115.00,
-    "resistance1": 128.00,
-    "resistance2": 135.00
-  },
-  "indicatorDetails": [
-    {"label": "RSI (14)", "value": "45", "bullish": true, "note": "Bullish zone — momentum building"},
-    {"label": "MACD", "value": "0.07", "bullish": true, "note": "Positive histogram — upward momentum"},
-    {"label": "Bollinger Bands", "value": "65%B", "bullish": null, "note": "Mid range — no edge"},
-    {"label": "Volume", "value": "1.2x avg", "bullish": true, "note": "Above average — confirmation"}
-  ],
-  "backtest": [
-    {"week": "Mar 10", "signal": "BUY", "direction": "CALL", "confidence": 7, "entryPrice": 120.00, "exitPrice": 125.00, "move": 4.2, "outcome": "WIN"},
-    {"week": "Mar 3",  "signal": "NEUTRAL", "direction": "WAIT", "confidence": 4, "entryPrice": 118.00, "exitPrice": 119.00, "move": 0.8, "outcome": "CORRECT"},
-    {"week": "Feb 24", "signal": "SELL", "direction": "PUT", "confidence": 6, "entryPrice": 122.00, "exitPrice": 116.00, "move": -4.9, "outcome": "WIN"},
-    {"week": "Feb 17", "signal": "BUY", "direction": "CALL", "confidence": 5, "entryPrice": 115.00, "exitPrice": 118.00, "move": 2.6, "outcome": "WIN"},
-    {"week": "Feb 10", "signal": "STRONG BUY", "direction": "CALL", "confidence": 9, "entryPrice": 110.00, "exitPrice": 107.00, "move": -2.7, "outcome": "LOSS"},
-    {"week": "Feb 3",  "signal": "SELL", "direction": "PUT", "confidence": 7, "entryPrice": 114.00, "exitPrice": 110.00, "move": -3.5, "outcome": "WIN"},
-    {"week": "Jan 27", "signal": "NEUTRAL", "direction": "WAIT", "confidence": 3, "entryPrice": 116.00, "exitPrice": 115.00, "move": -0.9, "outcome": "CORRECT"},
-    {"week": "Jan 20", "signal": "BUY", "direction": "CALL", "confidence": 6, "entryPrice": 112.00, "exitPrice": 115.00, "move": 2.7, "outcome": "WIN"},
-    {"week": "Jan 13", "signal": "WEAK SELL", "direction": "PUT", "confidence": 5, "entryPrice": 118.00, "exitPrice": 116.00, "move": -1.7, "outcome": "WIN"},
-    {"week": "Jan 6",  "signal": "BUY", "direction": "CALL", "confidence": 7, "entryPrice": 108.00, "exitPrice": 113.00, "move": 4.6, "outcome": "WIN"}
-  ],
-  "summary": "Brief 2-sentence analyst note about current setup and what to watch",
-  "risks": "Key risk factor to watch this week"
-}
-
-Signal scoring rules:
-- overallSignal options: "STRONG BUY", "BUY", "WEAK BUY", "NEUTRAL", "WEAK SELL", "SELL", "STRONG SELL"
-- direction options: "CALL", "PUT", "WAIT"
-- signalColor: "#00c87a" for strong buy, "#4bc99a" for buy, "#a3e4c8" for weak buy, "#7ab3e8" for neutral, "#f5a070" for weak sell, "#f07030" for sell, "#e04040" for strong sell
-- RSI < 30 = strong bullish, 30-45 = bullish, 45-55 = neutral, 55-70 = mildly bearish, >70 = strong bearish
-- MACD histogram positive = bullish, negative = bearish
-- BB %B < 20 = strong bullish, 20-35 = bullish, 35-65 = neutral, 65-80 = bearish, >80 = strong bearish
-- backtest outcome: WIN if direction matched actual move >1.5%, LOSS if wrong >1.5%, SCRATCH if <1.5% move, CORRECT if WAIT and <1.5% move
-
-Use REAL current data from web search. Make the backtest reflect realistic historical signal accuracy for this specific stock.
-Return ONLY the JSON object.`;
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 3000,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-
-    if (!response.ok) throw new Error("API request failed: " + response.status);
-    const data = await response.json();
-
-    // Extract text from response (may include tool use blocks)
-    const textContent = data.content
-      .filter(block => block.type === "text")
-      .map(block => block.text)
-      .join("");
-
-    if (!textContent) throw new Error("No analysis returned — please try again");
-
-    // Parse JSON
-    const clean = textContent.replace(/```json|```/g, "").trim();
-    let result;
-    try {
-      // Find JSON object in response
-      const jsonMatch = clean.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Could not parse response");
-      result = JSON.parse(jsonMatch[0]);
-    } catch(e) {
-      throw new Error("Could not parse AI response. Please try again.");
-    }
-
-    clearInterval(iv);
-    document.getElementById("loadingBox").style.display = "none";
-    renderResults(result);
-
-  } catch(e) {
-    clearInterval(iv);
-    showError(`<strong>${e.message || "Analysis failed"}</strong><br><br>
-      <span style="color:#3a5a7a;font-size:11px">Please try again. If the problem persists, the AI service may be temporarily unavailable.</span>`);
+function backtest(closes,dates){
+  const res=[];
+  for(let e=closes.length-1;e>=40&&res.length<10;e-=5){
+    const sl=closes.slice(0,e);if(sl.length<35)break;
+    const r=calcRSI(sl),m=calcMACD(sl),b=calcBB(sl),p=sl[sl.length-1];
+    const sig=genSig(r,m,b,1.0,p);
+    const fut=closes.slice(e,e+5).filter(Boolean);if(fut.length<3)continue;
+    const en=closes[e],ex=fut[fut.length-1],mv=((ex-en)/en*100);
+    let out="SCRATCH";
+    if(sig.dir==="CALL"&&mv>1.5)out="WIN";
+    else if(sig.dir==="PUT"&&mv<-1.5)out="WIN";
+    else if(sig.dir==="WAIT"&&Math.abs(mv)<1.5)out="CORRECT";
+    else if(sig.dir==="CALL"&&mv<-1.5)out="LOSS";
+    else if(sig.dir==="PUT"&&mv>1.5)out="LOSS";
+    const dt=dates&&dates[e]?new Date(dates[e]).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"Wk "+(res.length+1);
+    res.push({date:dt,rat:sig.rat,dir:sig.dir,col:sig.col,conf:sig.conf,entry:en.toFixed(2),exit:ex.toFixed(2),move:mv.toFixed(1),outcome:out});
   }
+  return res;
 }
-
-function renderResults(d) {
-  const up = (d.currentPrice - d.previousClose) >= 0;
-  const change = (d.currentPrice - d.previousClose).toFixed(2);
-  const changePct = d.previousClose > 0 ? (((d.currentPrice - d.previousClose) / d.previousClose) * 100).toFixed(2) : "0.00";
-
-  const wins   = (d.backtest || []).filter(r => r.outcome === "WIN").length;
-  const losses = (d.backtest || []).filter(r => r.outcome === "LOSS").length;
-  const total  = wins + losses;
-  const wr     = total > 0 ? Math.round(wins/total*100) : 0;
-
-  const sigBg = d.signalColor
-    ? d.signalColor.replace("#","") === "00c87a" ? "rgba(0,200,120,0.12)"
-    : d.signalColor === "#4bc99a" ? "rgba(75,201,154,0.1)"
-    : d.signalColor === "#7ab3e8" ? "rgba(122,179,232,0.08)"
-    : d.signalColor === "#e04040" ? "rgba(224,64,64,0.12)"
-    : d.signalColor === "#f07030" ? "rgba(240,112,48,0.12)"
-    : "rgba(122,179,232,0.08)" : "rgba(122,179,232,0.08)";
-
-  document.getElementById("results").innerHTML = `
-  <div class="fade-up">
-
-    <!-- Stock Header -->
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px">
-      <div>
-        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-          <span style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800">${d.symbol}</span>
-          <span style="font-size:14px;color:#5a7a9a">${d.companyName || ""}</span>
-        </div>
-        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:8px">
-          <span style="font-size:26px;font-weight:600">${fmt(d.currentPrice)}</span>
-          <span style="font-size:14px;color:${up?"#00c87a":"#e04040"}">${up?"+":""}${change} (${up?"+":""}${changePct}%)</span>
-        </div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap">
-          ${[
-            {l:"Day Range", v:`${fmt(d.dayLow)} – ${fmt(d.dayHigh)}`},
-            {l:"52W Range", v:`${fmt(d.week52Low)} – ${fmt(d.week52High)}`},
-            {l:"Mkt Cap",   v:d.marketCap||"N/A"},
-            {l:"Volume",   v:d.volume||"N/A"},
-          ].map(i=>`<span style="font-size:10px;color:#3a5a7a">${i.l}: <span style="color:#7ab3e8">${i.v}</span></span>`).join("")}
-        </div>
-      </div>
-      <div style="background:${sigBg};border:1px solid ${d.signalColor||"#7ab3e8"}60;border-radius:16px;padding:18px 28px;text-align:center;min-width:180px">
-        <div style="font-size:9px;color:${d.signalColor||"#7ab3e8"};letter-spacing:2px;margin-bottom:5px">CURRENT SIGNAL</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:${d.signalColor||"#7ab3e8"}">${d.overallSignal||"N/A"}</div>
-        <div style="font-size:10px;color:${d.signalColor||"#7ab3e8"};margin-top:5px;letter-spacing:1px">${d.direction||"WAIT"} CONTRACT · ${d.confidence||0}/10 CONFIDENCE</div>
-      </div>
-    </div>
-
-    <!-- 4 Metric Cards -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
-      ${[
-        {l:"RSI (14)",     v:d.rsi14,           n:d.rsi14<30?"OVERSOLD":d.rsi14>70?"OVERBOUGHT":d.rsi14<50?"BEARISH":"BULLISH", c:d.rsi14<30?"#00c87a":d.rsi14>70?"#e04040":"#7ab3e8"},
-        {l:"MACD Hist",   v:(d.macdHistogram||0).toFixed(4), n:(d.macdHistogram||0)>0?"BULLISH":"BEARISH", c:(d.macdHistogram||0)>0?"#00c87a":"#e04040"},
-        {l:"BB %B",       v:(d.bbPercentB||50)+"%", n:d.bbPercentB<25?"NEAR LOWER":d.bbPercentB>75?"NEAR UPPER":"MID RANGE", c:d.bbPercentB<25?"#00c87a":d.bbPercentB>75?"#e04040":"#7ab3e8"},
-        {l:"Volume Ratio",v:(d.volumeRatio||1)+"x", n:d.volumeRatio>1.5?"ABOVE AVG":d.volumeRatio<0.6?"BELOW AVG":"NORMAL", c:d.volumeRatio>1.5?"#00c87a":"#7ab3e8"}
-      ].map(m=>`<div class="card"><div style="font-size:9px;color:#3a5a7a;letter-spacing:1px;margin-bottom:7px">${m.l}</div><div style="font-size:22px;font-weight:600;color:${m.c};margin-bottom:4px">${m.v}</div><div style="font-size:9px;color:${m.c};letter-spacing:1px">${m.n}</div></div>`).join("")}
-    </div>
-
-    <!-- Breakdown + Recommendation -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
-
-      <div class="card">
-        <div style="font-size:9px;color:#3a5a7a;letter-spacing:2px;margin-bottom:14px">INDICATOR BREAKDOWN</div>
-        ${(d.indicatorDetails||[]).map(s=>`
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-            <div>
-              <div style="font-size:12px;color:${s.bullish===true?"#00c87a":s.bullish===false?"#e04040":"#7ab3e8"}">${s.label}</div>
-              <div style="font-size:10px;color:#3a5a7a;margin-top:2px">${s.note}</div>
-            </div>
-            <span style="font-size:12px;color:${s.bullish===true?"#00c87a":s.bullish===false?"#e04040":"#5a7a9a"};font-weight:600;white-space:nowrap;margin-left:10px">${s.value}</span>
-          </div>`).join("")}
-
-        ${d.summary ? `<div style="margin-top:14px;padding:12px;background:rgba(74,140,212,0.08);border:1px solid rgba(74,140,212,0.2);border-radius:8px;font-size:11px;color:#7ab3e8;line-height:1.6">${d.summary}</div>` : ""}
-      </div>
-
-      <div class="card">
-        <div style="font-size:9px;color:#3a5a7a;letter-spacing:2px;margin-bottom:14px">CONTRACT RECOMMENDATION</div>
-        <div style="background:${sigBg};border-radius:12px;padding:18px;margin-bottom:14px;text-align:center;border:1px solid ${d.signalColor||"#7ab3e8"}30">
-          <div style="font-size:10px;color:${d.signalColor||"#7ab3e8"};letter-spacing:2px;margin-bottom:6px">BUY A</div>
-          <div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${d.signalColor||"#7ab3e8"}">${d.direction||"WAIT"}</div>
-          ${d.direction!=="WAIT"?`<div style="font-size:10px;color:${d.signalColor};margin-top:4px;letter-spacing:1px">WEEKLY OPTIONS CONTRACT</div>`:`<div style="font-size:11px;color:#7ab3e8;margin-top:4px">No clear edge this week — sit out</div>`}
-        </div>
-        ${[
-          {l:"When to Enter",   v:d.entryTiming||"N/A"},
-          {l:"Strike",         v:d.strikeRecommendation||"N/A"},
-          {l:"Confidence",     v:(d.confidence||0)+"/10"},
-          {l:"BB Support",     v:fmt(d.bbLower)},
-          {l:"BB Resistance",  v:fmt(d.bbUpper)},
-          {l:"Key Support",    v:fmt(d.keyLevels?.support1)},
-          {l:"Key Resistance", v:fmt(d.keyLevels?.resistance1)},
-        ].map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:11px"><span style="color:#3a5a7a">${r.l}</span><span style="color:#c8d8e8;text-align:right;max-width:55%">${r.v}</span></div>`).join("")}
-        ${d.risks?`<div style="margin-top:10px;padding:10px;background:rgba(224,64,64,0.06);border:1px solid rgba(224,64,64,0.15);border-radius:8px;font-size:10px;color:#a05050;line-height:1.6">⚠ Risk: ${d.risks}</div>`:""}
-        <div style="margin-top:8px;padding:8px;background:rgba(255,165,0,0.04);border:1px solid rgba(255,165,0,0.1);border-radius:6px;font-size:9px;color:#806030;line-height:1.5">Not financial advice. Options can expire worthless. Always manage risk.</div>
-      </div>
-    </div>
-
-    <!-- Backtest -->
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:14px">
+function showErr(msg){document.getElementById("loadBox").style.display="none";document.getElementById("errBox").style.display="block";document.getElementById("errBox").innerHTML=msg;}
+function fmt(n){if(!n&&n!==0)return"N/A";return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);}
+function oc(o){return o==="WIN"?"#00c87a":o==="LOSS"?"#e04040":o==="CORRECT"?"#4bc99a":"#5a7a9a";}
+function ob(o){return o==="WIN"?"rgba(0,200,120,0.08)":o==="LOSS"?"rgba(224,64,64,0.07)":"rgba(255,255,255,0.02)";}
+async function analyze(){
+  const sym=document.getElementById("tickerInput").value.trim().toUpperCase();
+  if(!sym){showErr("Please enter a ticker symbol.");return;}
+  if(!KEY){showErr("Please save your free Twelve Data API key above. Sign up at <strong>twelvedata.com</strong> — no credit card required.");document.getElementById("apiInput").focus();return;}
+  const msgs=["FETCHING PRICE DATA...","CALCULATING RSI...","RUNNING MACD...","BOLLINGER BANDS...","RUNNING BACKTEST...","GENERATING SIGNAL..."];
+  let mi=0;
+  document.getElementById("loadBox").style.display="block";
+  document.getElementById("loadMsg").textContent=msgs[0];
+  document.getElementById("results").innerHTML="";
+  document.getElementById("errBox").style.display="none";
+  const iv=setInterval(()=>{mi=(mi+1)%msgs.length;const el=document.getElementById("loadMsg");if(el)el.textContent=msgs[mi];},700);
+  try{
+    const [hRes,qRes]=await Promise.all([
+      fetch(`https://api.twelvedata.com/time_series?symbol=${sym}&interval=1day&outputsize=130&apikey=${KEY}`),
+      fetch(`https://api.twelvedata.com/quote?symbol=${sym}&apikey=${KEY}`)
+    ]);
+    const hData=await hRes.json(),qData=await qRes.json();
+    if(hData.status==="error")throw new Error(hData.message||"Invalid ticker or API key");
+    if(!hData.values||hData.values.length<30)throw new Error(`No data for "${sym}" — check the ticker symbol`);
+    const vals=[...hData.values].reverse();
+    const closes=vals.map(d=>parseFloat(d.close));
+    const vols=vals.map(d=>parseFloat(d.volume||0));
+    const dates=vals.map(d=>d.datetime);
+    const price=parseFloat(qData.close||closes[closes.length-1]);
+    const prev=parseFloat(qData.previous_close||closes[closes.length-2]);
+    const change=price-prev,pct=((change/prev)*100).toFixed(2);
+    const name=qData.name||sym,dH=parseFloat(qData.high||price),dL=parseFloat(qData.low||price);
+    const w52H=parseFloat(qData.fifty_two_week?.high||price),w52L=parseFloat(qData.fifty_two_week?.low||price);
+    const rsi=calcRSI(closes),macd=calcMACD(closes),bb=calcBB(closes);
+    const vAvg=vols.slice(-20).filter(v=>v>0).reduce((a,b)=>a+b,0)/20;
+    const vr=vAvg>0?+(vols[vols.length-1]/vAvg).toFixed(2):1;
+    const sig=genSig(rsi,macd,bb,vr,price);
+    const bt=backtest(closes,dates);
+    const wins=bt.filter(r=>r.outcome==="WIN").length,losses=bt.filter(r=>r.outcome==="LOSS").length;
+    const wr=wins+losses>0?Math.round(wins/(wins+losses)*100):0;
+    clearInterval(iv);document.getElementById("loadBox").style.display="none";
+    const up=change>=0,pB=bb?((price-bb.lower)/(bb.upper-bb.lower)*100).toFixed(0):null;
+    document.getElementById("results").innerHTML=`<div class="fade-up">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:18px">
         <div>
-          <div style="font-size:9px;color:#3a5a7a;letter-spacing:2px;margin-bottom:4px">HISTORICAL BACKTEST · LAST ${(d.backtest||[]).length} WEEKLY SETUPS</div>
-          <div style="font-size:12px;color:#5a7a9a">Signal accuracy on ${d.symbol} — past performance analysis</div>
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:5px"><span style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800">${sym}</span><span style="font-size:13px;color:#5a7a9a">${name}</span></div>
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:24px;font-weight:600">${fmt(price)}</span><span style="color:${up?"#00c87a":"#e04040"};font-size:13px">${up?"+":""}${change.toFixed(2)} (${up?"+":""}${pct}%)</span></div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap"><span style="font-size:10px;color:#3a5a7a">Day: <span style="color:#7ab3e8">${fmt(dL)} – ${fmt(dH)}</span></span><span style="font-size:10px;color:#3a5a7a">52W: <span style="color:#7ab3e8">${fmt(w52L)} – ${fmt(w52H)}</span></span></div>
         </div>
-        <div style="display:flex;gap:16px;align-items:center">
-          <div style="text-align:center">
-            <div style="font-size:9px;color:#3a5a7a;letter-spacing:1px;margin-bottom:2px">WIN RATE</div>
-            <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:${wr>=60?"#00c87a":wr>=45?"#f0a030":"#e04040"}">${wr}%</div>
-            <div style="font-size:10px;color:#3a5a7a">${wins}W · ${losses}L · ${(d.backtest||[]).length-wins-losses}S</div>
+        <div style="background:${sig.bg};border:1px solid ${sig.col}60;border-radius:14px;padding:16px 24px;text-align:center;min-width:170px">
+          <div style="font-size:9px;color:${sig.col};letter-spacing:2px;margin-bottom:4px">SIGNAL</div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:${sig.col}">${sig.rat}</div>
+          <div style="font-size:10px;color:${sig.col};margin-top:4px">${sig.dir} · ${sig.conf}/10 CONFIDENCE</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+        ${[{l:"RSI (14)",v:rsi,n:rsi<30?"OVERSOLD":rsi>70?"OVERBOUGHT":rsi<50?"BEARISH":"BULLISH",c:rsi<30?"#00c87a":rsi>70?"#e04040":"#7ab3e8"},{l:"MACD Hist",v:macd.hist.toFixed(4),n:macd.hist>0?"BULLISH":"BEARISH",c:macd.hist>0?"#00c87a":"#e04040"},{l:"BB %B",v:pB!==null?pB+"%":"N/A",n:pB<25?"NEAR LOWER":pB>75?"NEAR UPPER":"MID RANGE",c:pB<25?"#00c87a":pB>75?"#e04040":"#7ab3e8"},{l:"Volume",v:vr+"x avg",n:vr>1.5?"ABOVE AVG":vr<0.6?"BELOW AVG":"NORMAL",c:vr>1.5?"#00c87a":"#7ab3e8"}].map(m=>`<div class="card"><div style="font-size:9px;color:#3a5a7a;letter-spacing:1px;margin-bottom:5px">${m.l}</div><div style="font-size:20px;font-weight:600;color:${m.c};margin-bottom:3px">${m.v}</div><div style="font-size:9px;color:${m.c};letter-spacing:1px">${m.n}</div></div>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <div class="card">
+          <div style="font-size:9px;color:#3a5a7a;letter-spacing:2px;margin-bottom:12px">INDICATOR BREAKDOWN</div>
+          ${sig.det.map(s=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)"><div><div style="font-size:11px;color:${s.bull===true?"#00c87a":s.bull===false?"#e04040":"#7ab3e8"}">${s.l}</div><div style="font-size:9px;color:#3a5a7a;margin-top:2px">${s.n}</div></div><span style="font-size:11px;color:${s.bull===true?"#00c87a":s.bull===false?"#e04040":"#5a7a9a"};font-weight:600;white-space:nowrap;margin-left:8px">${s.v}</span></div>`).join("")}
+        </div>
+        <div class="card">
+          <div style="font-size:9px;color:#3a5a7a;letter-spacing:2px;margin-bottom:12px">CONTRACT RECOMMENDATION</div>
+          <div style="background:${sig.bg};border-radius:10px;padding:16px;margin-bottom:12px;text-align:center;border:1px solid ${sig.col}30">
+            <div style="font-size:9px;color:${sig.col};letter-spacing:2px;margin-bottom:4px">BUY A</div>
+            <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:${sig.col}">${sig.dir}</div>
+            ${sig.dir!=="WAIT"?`<div style="font-size:9px;color:${sig.col};margin-top:3px;letter-spacing:1px">WEEKLY OPTIONS CONTRACT</div>`:`<div style="font-size:11px;color:#7ab3e8;margin-top:4px">No clear edge — sit out</div>`}
           </div>
-          <svg viewBox="0 0 64 64" style="width:60px;height:60px;transform:rotate(-90deg)">
-            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
-            <circle cx="32" cy="32" r="26" fill="none" stroke="${wr>=60?"#00c87a":wr>=45?"#f0a030":"#e04040"}"
-              stroke-width="7" stroke-dasharray="${(wr/100*163.4).toFixed(1)} 163.4" stroke-linecap="round"/>
-          </svg>
+          ${[{l:"When to Enter",v:sig.entry},{l:"Strike",v:sig.strike},{l:"Confidence",v:sig.conf+"/10"},{l:"BB Support",v:bb?fmt(bb.lower):"N/A"},{l:"BB Resistance",v:bb?fmt(bb.upper):"N/A"}].map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:11px"><span style="color:#3a5a7a">${r.l}</span><span style="color:#c8d8e8;text-align:right;max-width:56%">${r.v}</span></div>`).join("")}
+          <div style="margin-top:10px;padding:8px;background:rgba(255,200,0,0.04);border:1px solid rgba(255,200,0,0.1);border-radius:6px;font-size:9px;color:#806030;line-height:1.5">Not financial advice. Options can expire worthless. Always manage risk.</div>
         </div>
       </div>
-
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:620px">
-          <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
-            ${["WEEK","SIGNAL","DIR","CONF","ENTRY PRICE","EXIT PRICE","5-DAY MOVE","OUTCOME"].map(h=>`<th style="padding:8px 12px;text-align:left;color:#2a4a6a;letter-spacing:1px;font-size:9px;white-space:nowrap">${h}</th>`).join("")}
-          </tr></thead>
-          <tbody>
-            ${(d.backtest||[]).map(r=>`
-              <tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:${ob(r.outcome)}">
-                <td style="padding:9px 12px;color:#5a7a9a;white-space:nowrap">${r.week}</td>
-                <td style="padding:9px 12px"><span style="color:${r.direction==="CALL"?"#4bc99a":r.direction==="PUT"?"#f07030":"#7ab3e8"};font-size:10px">${r.signal}</span></td>
-                <td style="padding:9px 12px"><span style="color:${r.direction==="CALL"?"#00c87a":r.direction==="PUT"?"#e04040":"#7ab3e8"};font-weight:600;letter-spacing:1px">${r.direction}</span></td>
-                <td style="padding:9px 12px;color:#7ab3e8">${r.confidence}/10</td>
-                <td style="padding:9px 12px;color:#c8d8e8">${fmt(r.entryPrice)}</td>
-                <td style="padding:9px 12px;color:#c8d8e8">${fmt(r.exitPrice)}</td>
-                <td style="padding:9px 12px;color:${r.move>=0?"#00c87a":"#e04040"};font-weight:600">${r.move>=0?"+":""}${(+r.move).toFixed(1)}%</td>
-                <td style="padding:9px 12px"><span style="color:${oc(r.outcome)};font-weight:600;letter-spacing:0.5px">${r.outcome}</span></td>
-              </tr>`).join("")}
-          </tbody>
-        </table>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
+          <div><div style="font-size:9px;color:#3a5a7a;letter-spacing:2px;margin-bottom:3px">HISTORICAL BACKTEST · LAST ${bt.length} WEEKLY SETUPS</div><div style="font-size:11px;color:#5a7a9a">Signal accuracy on ${sym} — past 6 months</div></div>
+          <div style="display:flex;gap:14px;align-items:center">
+            <div style="text-align:center"><div style="font-size:9px;color:#3a5a7a;letter-spacing:1px">WIN RATE</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:${wr>=60?"#00c87a":wr>=45?"#f0a030":"#e04040"}">${wr}%</div><div style="font-size:9px;color:#3a5a7a">${wins}W · ${losses}L · ${bt.length-wins-losses}S</div></div>
+            <svg viewBox="0 0 60 60" style="width:54px;height:54px;transform:rotate(-90deg)"><circle cx="30" cy="30" r="24" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/><circle cx="30" cy="30" r="24" fill="none" stroke="${wr>=60?"#00c87a":wr>=45?"#f0a030":"#e04040"}" stroke-width="6" stroke-dasharray="${(wr*1.508).toFixed(1)} 150.8" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:540px">
+          <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">${["WEEK","SIGNAL","DIR","CONF","ENTRY","EXIT","5-DAY MOVE","OUTCOME"].map(h=>`<th style="padding:7px 10px;text-align:left;color:#2a4a6a;font-size:9px;letter-spacing:1px;white-space:nowrap">${h}</th>`).join("")}</tr></thead>
+          <tbody>${bt.map(r=>`<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:${ob(r.outcome)}"><td style="padding:8px 10px;color:#5a7a9a;white-space:nowrap">${r.date}</td><td style="padding:8px 10px"><span style="color:${r.col};font-size:10px">${r.rat}</span></td><td style="padding:8px 10px"><span style="color:${r.dir==="CALL"?"#00c87a":r.dir==="PUT"?"#e04040":"#7ab3e8"};font-weight:600">${r.dir}</span></td><td style="padding:8px 10px;color:#7ab3e8">${r.conf}/10</td><td style="padding:8px 10px;color:#c8d8e8">$${r.entry}</td><td style="padding:8px 10px;color:#c8d8e8">$${r.exit}</td><td style="padding:8px 10px;color:${parseFloat(r.move)>=0?"#00c87a":"#e04040"};font-weight:600">${parseFloat(r.move)>=0?"+":""}${r.move}%</td><td style="padding:8px 10px"><span style="color:${oc(r.outcome)};font-weight:600">${r.outcome}</span></td></tr>`).join("")}</tbody>
+        </table></div>
+        <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,0.02);border-radius:8px;font-size:9px;color:#2a4a6a;line-height:1.6">WIN = signal matched 5-day move &gt;1.5% · LOSS = signal wrong · SCRATCH = move &lt;1.5% · Past performance does not equal future results.</div>
       </div>
-
-      <div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,0.02);border-radius:8px;font-size:10px;color:#2a4a6a;line-height:1.7">
-        <strong style="color:#3a5a7a">How to read:</strong>
-        WIN = signal direction matched actual 5-day move &gt;1.5% ·
-        LOSS = signal was wrong, stock moved &gt;1.5% opposite ·
-        SCRATCH = stock moved &lt;1.5% either way ·
-        CORRECT = WAIT signal was right ·
-        <span style="color:#1e3050">Past performance does not guarantee future results. Always manage risk on every trade.</span>
-      </div>
-    </div>
-
-  </div>`;
+    </div>`;
+  }catch(e){clearInterval(iv);showErr(`<strong>${e.message}</strong><br><br><span style="color:#3a5a7a;font-size:11px">Make sure your Twelve Data key is correct. Sign up free at twelvedata.com</span>`);}
 }
-
-document.getElementById("tickerInput").addEventListener("keydown", e => { if (e.key === "Enter") analyze(); });
+document.getElementById("tickerInput").addEventListener("keydown",e=>{if(e.key==="Enter")analyze();});
 init();
 </script>
 </body>

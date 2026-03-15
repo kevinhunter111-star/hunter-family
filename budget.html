@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hunter Family Budget · TX & AR</title>
 
-  <!-- Netlify Identity Widget -->
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
   <!-- React + Babel only (no external chart lib needed) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -93,7 +91,7 @@
 </head>
 <body>
 
-<!-- Login Screen (shown before auth) -->
+<!-- Login Screen (password protected) -->
 <div id="login-screen">
   <div class="state-badges">
     <span class="badge-tx">🤠 TEXAS</span>
@@ -103,10 +101,13 @@
     <div class="login-icon">🏡</div>
     <h1>Hunter Family Budget</h1>
     <p>Dual-State Dashboard · TX & AR</p>
-    <button id="login-btn" onclick="netlifyIdentity.open()">
+    <input id="budget-pw" type="password" placeholder="Enter family password..."
+      style="width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:10px;color:#fff;padding:13px 16px;font-size:16px;font-family:'DM Mono',monospace;letter-spacing:2px;margin-bottom:12px;box-sizing:border-box"/>
+    <button id="login-btn" onclick="checkBudgetPassword()">
       SIGN IN TO DASHBOARD
     </button>
-    <p class="login-note">Secure family access · Shared budget sync</p>
+    <div id="budget-pw-error" style="color:#e04040;font-size:12px;margin-top:8px;font-family:'DM Mono',monospace;display:none">Incorrect password. Try again.</div>
+    <p class="login-note">Secure family access · Shared budget data</p>
   </div>
 </div>
 
@@ -421,23 +422,6 @@ function getPreloadedPhotos() {
 // ── Netlify Blobs Sync ───────────────────────────────────────────────────────
 async function loadSharedData(token) {
   const preloaded = getPreloadedPhotos();
-  // Try Netlify Blobs (shared across all family)
-  try {
-    if (token) {
-      const res = await fetch("/.netlify/functions/budget", {
-        headers: { Authorization: "Bearer " + token }
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json && json.data) {
-          const d = json.data;
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {}
-          return { ...d, txPhoto: d.txPhoto || preloaded.txPhoto, arPhoto: d.arPhoto || preloaded.arPhoto };
-        }
-      }
-    }
-  } catch(e) {}
-  // Fallback to localStorage
   try {
     const ls = localStorage.getItem(STORAGE_KEY);
     const saved = ls ? JSON.parse(ls) : null;
@@ -448,15 +432,6 @@ async function loadSharedData(token) {
 
 async function saveSharedData(data, token) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
-  try {
-    if (token) {
-      await fetch("/.netlify/functions/budget", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ data })
-      });
-    }
-  } catch(e) {}
 }
 
 // ── Components ───────────────────────────────────────────────────────────────
@@ -1358,60 +1333,57 @@ Category rules: mortgage/rent→mortgage, electric/gas/water/internet/phone→ut
   );
 }
 
-// ── Auth wrapper ─────────────────────────────────────────────────────────────
+// ── Auth wrapper (simple password, no Netlify needed) ────────────────────────
+async function hashPw(pw) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+window.checkBudgetPassword = async function() {
+  const pw = document.getElementById("budget-pw").value;
+  if (!pw) return;
+  const hash = await hashPw(pw);
+  const stored = localStorage.getItem("hunter_pw_hash");
+  const defaultHash = await hashPw("hunter2025");
+  const valid = stored || defaultHash;
+  if (hash === valid) {
+    if (!stored) localStorage.setItem("hunter_pw_hash", defaultHash);
+    sessionStorage.setItem("hunter_budget_auth","1");
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    // Auth handled by checkBudgetPassword and DOMContentLoaded above
+  } else {
+    document.getElementById("budget-pw-error").style.display = "block";
+    document.getElementById("budget-pw").value = "";
+    setTimeout(()=>document.getElementById("budget-pw-error").style.display="none", 3000);
+  }
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const pwInput = document.getElementById("budget-pw");
+  if (pwInput) pwInput.addEventListener("keydown", e => { if(e.key==="Enter") window.checkBudgetPassword(); });
+  if (sessionStorage.getItem("hunter_budget_auth")==="1") {
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+  }
+});
+
 function AuthWrapper() {
-  const [user, setUser] = useState(null);
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    const ni = window.netlifyIdentity;
-    if (!ni) { setChecking(false); return; }
-
-    const showDashboard = (u) => {
-      setUser(u);
-      setChecking(false);
-      try { ni.close(); } catch(e) {}
-      document.getElementById("login-screen").style.display = "none";
-      document.getElementById("app").style.display = "block";
-    };
-
-    const showLogin = () => {
-      setUser(null);
-      setChecking(false);
-      document.getElementById("login-screen").style.display = "flex";
-      document.getElementById("app").style.display = "none";
-    };
-
-    ni.init({ APIUrl: window.location.origin + "/.netlify/identity" });
-
-    ni.on("init", u => {
-      if (u) {
-        setTimeout(() => { try { ni.close(); } catch(e) {} }, 150);
-        showDashboard(u);
-      } else {
-        showLogin();
-      }
-    });
-
-    ni.on("login", u => {
-      setTimeout(() => { try { ni.close(); } catch(e) {} }, 150);
-      showDashboard(u);
-    });
-
-    ni.on("logout", showLogin);
-    ni.on("error", err => { console.error("Identity error:", err); setChecking(false); });
-  }, []);
+  const [authed] = React.useState(true);
+  const user = { email: "family@hunter.com" };
 
   const handleLogout = () => {
-    window.netlifyIdentity?.logout();
+    sessionStorage.removeItem("hunter_budget_auth");
+    document.getElementById("login-screen").style.display = "flex";
+    document.getElementById("app").style.display = "none";
+    document.getElementById("budget-pw").value = "";
   };
 
-  if (checking) return null;
-  if (!user) return null;
+  if (!authed) return null;
   return <App user={user} onLogout={handleLogout} />;
 }
 
-ReactDOM.render(<AuthWrapper />, document.getElementById("app"));
+// Auth handled by checkBudgetPassword and DOMContentLoaded above
 </script>
 
 <!-- Preloaded home photos (outside JS to keep Babel script small) -->
