@@ -1351,8 +1351,8 @@ window.checkBudgetPassword = async function() {
     sessionStorage.setItem("hunter_budget_auth","1");
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("app").style.display = "block";
-    // Auth handled by checkBudgetPassword and DOMContentLoaded above
-  } else {
+        // Auth handled by checkBudgetPassword and DOMContentLoaded above
+  } else { ReactDOM.render(React.createElement(AuthWrapper), document.getElementById("app"));
     document.getElementById("budget-pw-error").style.display = "block";
     document.getElementById("budget-pw").value = "";
     setTimeout(()=>document.getElementById("budget-pw-error").style.display="none", 3000);
