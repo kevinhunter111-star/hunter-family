@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Hunter Family"/>
+<meta name="theme-color" content="#080e1a"/>
+<title>Hunter Family Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080e1a;font-family:'Lora',serif;color:#e0eaff;min-height:100vh;
+  background-image:radial-gradient(ellipse at 20% 30%,rgba(26,107,74,0.1) 0%,transparent 55%),
+  radial-gradient(ellipse at 80% 70%,rgba(74,140,212,0.08) 0%,transparent 55%),
+  linear-gradient(135deg,#080e1a 0%,#0f1e35 100%)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+input:focus{outline:none}
+.fade-up{animation:fadeUp 0.4s ease forwards}
+
+/* Login screen */
+#loginScreen{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:24px;
+}
+.login-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:24px;padding:40px 36px;
+  max-width:400px;width:100%;
+  backdrop-filter:blur(10px);
+  animation:fadeUp 0.5s ease forwards;
+}
+
+/* Dashboard */
+#dashboard{display:none;padding:24px;max-width:600px;margin:0 auto}
+
+/* Tool cards */
+.tool-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:20px;padding:24px;
+  margin-bottom:16px;
+  cursor:pointer;
+  transition:all 0.2s;
+  text-decoration:none;
+  display:block;
+  -webkit-tap-highlight-color:transparent;
+}
+.tool-card:hover,.tool-card:active{
+  background:rgba(255,255,255,0.07);
+  border-color:rgba(255,255,255,0.2);
+  transform:translateY(-2px);
+}
+
+/* Mobile nav */
+.nav-btn{
+  flex:1;padding:12px 8px;
+  background:none;border:none;
+  font-family:'DM Mono',monospace;
+  font-size:10px;letter-spacing:1px;
+  color:#3a5a7a;cursor:pointer;
+  transition:color 0.15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.nav-btn.active{color:#e0eaff}
+
+/* Password input */
+.pw-input{
+  width:100%;background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:10px;color:#fff;
+  padding:14px 16px;font-size:16px;
+  font-family:'DM Mono',monospace;
+  letter-spacing:2px;
+}
+.pw-input:focus{border-color:rgba(75,201,154,0.5)}
+
+/* Responsive grid */
+@media(min-width:600px){
+  #dashboard{padding:32px}
+  .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .tool-card{margin-bottom:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN SCREEN ════════════════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:48px;margin-bottom:12px">🏡</div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:800;margin-bottom:6px">Hunter Family Hub</h1>
+      <p style="font-size:12px;color:#3a5a7a;font-family:'DM Mono',monospace;letter-spacing:1px">PRIVATE FAMILY ACCESS</p>
+    </div>
+
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:24px">
+      <span style="background:#1a6b4a;border-radius:4px;padding:3px 12px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px">🤠 TEXAS</span>
+      <span style="background:#7b2d00;border-radius:4px;padding:3px 12px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px">🏔️ ARKANSAS</span>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;color:#5a7a9a;font-family:'DM Mono',monospace;letter-spacing:1px;display:block;margin-bottom:8px">PASSWORD</label>
+      <input id="pwInput" type="password" class="pw-input" placeholder="Enter family password..."
+        onkeydown="if(event.key==='Enter')checkPassword()"/>
+    </div>
+
+    <button onclick="checkPassword()"
+      style="width:100%;padding:14px;background:linear-gradient(135deg,#1a6b4a,#2d9e72);border:none;border-radius:10px;color:#fff;font-family:'DM Mono',monospace;font-size:13px;letter-spacing:2px;cursor:pointer;font-weight:600">
+      ENTER
+    </button>
+
+    <div id="pwError" style="display:none;margin-top:12px;text-align:center;font-size:12px;color:#e04040;font-family:'DM Mono',monospace">
+      Incorrect password. Try again.
+    </div>
+
+    <div style="margin-top:20px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:10px;color:#2a4a6a;font-family:'DM Mono',monospace;text-align:center;line-height:1.6">
+      Default password: <span style="color:#4bc99a">hunter2025</span><br>
+      Change it in Settings after logging in
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══════════════════════════════════════════════════════════ -->
+<div id="dashboard">
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+    <div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <span style="background:#1a6b4a;border-radius:4px;padding:2px 8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px">🤠 TX</span>
+        <span style="background:#7b2d00;border-radius:4px;padding:2px 8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px">🏔️ AR</span>
+      </div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:800;line-height:1.1">Hunter Family Hub</h1>
+      <p style="font-size:11px;color:#5a7a9a;font-family:'DM Mono',monospace;margin-top:4px" id="welcomeMsg">Welcome back</p>
+    </div>
+    <button onclick="logout()" style="padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#5a7a9a;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;letter-spacing:1px">
+      LOCK
+    </button>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div style="display:flex;background:rgba(255,255,255,0.04);border-radius:12px;padding:4px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.06)">
+    <button class="nav-btn active" id="tab-home" onclick="showTab('home')">🏠 HOME</button>
+    <button class="nav-btn" id="tab-budget" onclick="showTab('budget')">💰 BUDGET</button>
+    <button class="nav-btn" id="tab-trading" onclick="showTab('trading')">📈 TRADING</button>
+    <button class="nav-btn" id="tab-settings" onclick="showTab('settings')">⚙️ SETTINGS</button>
+  </div>
+
+  <!-- ── HOME TAB ─────────────────────────────────────────────────────────── -->
+  <div id="tab-home-content">
+
+    <!-- Quick stats -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px" id="quickStats">
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+        <div style="font-size:10px;color:#3a5a7a;font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:6px">BUDGET HEALTH</div>
+        <div style="font-size:22px;font-weight:700;color:#4bc99a;font-family:'DM Mono',monospace" id="budgetHealth">--</div>
+        <div style="font-size:10px;color:#5a7a9a;margin-top:3px" id="budgetSub">Loading...</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+        <div style="font-size:10px;color:#3a5a7a;font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:6px">LAST BILL</div>
+        <div style="font-size:16px;font-weight:700;color:#7ab3e8;font-family:'DM Mono',monospace" id="lastBill">--</div>
+        <div style="font-size:10px;color:#5a7a9a;margin-top:3px" id="lastBillSub">No bills yet</div>
+      </div>
+    </div>
+
+    <!-- Tool Cards -->
+    <div class="tool-grid">
+      <a class="tool-card" onclick="showTab('budget')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div style="width:44px;height:44px;background:rgba(45,158,114,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">💰</div>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:#4bc99a;letter-spacing:1px;padding:3px 8px;background:rgba(75,201,154,0.1);border-radius:4px">TX · AR</span>
+        </div>
+        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:4px">Family Budget</div>
+        <div style="font-size:12px;color:#5a7a9a">Dual-state dashboard · Bills · Tax estimate</div>
+        <div style="margin-top:12px;font-size:11px;color:#3a6b52;font-family:'DM Mono',monospace">OPEN →</div>
+      </a>
+
+      <a class="tool-card" onclick="showTab('trading')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div style="width:44px;height:44px;background:rgba(0,200,120,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">📈</div>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:#00c87a;letter-spacing:1px;padding:3px 8px;background:rgba(0,200,120,0.1);border-radius:4px">AI POWERED</span>
+        </div>
+        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:4px">Swing Trade System</div>
+        <div style="font-size:12px;color:#5a7a9a">RSI · MACD · Bollinger · Backtest</div>
+        <div style="margin-top:12px;font-size:11px;color:#006640;font-family:'DM Mono',monospace">ANALYZE →</div>
+      </a>
+    </div>
+
+    <!-- Recent activity placeholder -->
+    <div style="margin-top:20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:18px">
+      <div style="font-size:10px;color:#3a5a7a;font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:12px">QUICK ACCESS</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${["Import Bills","Tax Estimate","Analyze NVDA","Analyze AAPL","Analyze TSLA"].map(l=>`
+          <button onclick="handleQuick('${l}')"
+            style="padding:8px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#7ab3e8;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:0.5px">
+            ${l}
+          </button>`).join("")}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BUDGET TAB ────────────────────────────────────────────────────────── -->
+  <div id="tab-budget-content" style="display:none">
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden">
+      <iframe id="budgetFrame" src="budget.html" style="width:100%;height:85vh;border:none;border-radius:14px" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- ── TRADING TAB ───────────────────────────────────────────────────────── -->
+  <div id="tab-trading-content" style="display:none">
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden">
+      <iframe id="tradingFrame" src="trading.html" style="width:100%;height:85vh;border:none;border-radius:14px" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS TAB ──────────────────────────────────────────────────────── -->
+  <div id="tab-settings-content" style="display:none">
+    <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:20px">Settings</div>
+
+    <!-- Change Password -->
+    <div class="card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:16px">
+      <div style="font-size:10px;color:#3a5a7a;font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:14px">CHANGE PASSWORD</div>
+      <input id="newPw1" type="password" placeholder="New password..."
+        style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;padding:11px 14px;font-size:14px;font-family:'DM Mono',monospace;margin-bottom:10px"/>
+      <input id="newPw2" type="password" placeholder="Confirm new password..."
+        style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;padding:11px 14px;font-size:14px;font-family:'DM Mono',monospace;margin-bottom:10px"/>
+      <button onclick="changePassword()"
+        style="width:100%;padding:12px;background:rgba(75,201,154,0.15);border:1px solid rgba(75,201,154,0.3);border-radius:8px;color:#4bc99a;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;letter-spacing:1px">
+        UPDATE PASSWORD
+      </button>
+      <div id="pwChangeMsg" style="margin-top:8px;font-size:11px;font-family:'DM Mono',monospace;text-align:center"></div>
+    </div>
+
+    <!-- Family Members -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:16px">
+      <div style="font-size:10px;color:#3a5a7a;font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:14px">FAMILY ACCESS</div>
+      <div style="font-size:12px;color:#7ab3e8;line-height:1.8">
+        Share this URL with family members:<br>
+        <span style="color:#4bc99a;font-family:'DM Mono',monospace" id="siteUrl"></span><br><br>
+        They use the same password to log in.<br>
+        To change access, just change the password above.
+      </div>
+    </div>
+
+    <!-- Add to Home Screen -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:16px">
+      <div style="font-size:10px;color:#3a5a7a;font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:12px">ADD TO PHONE HOME SCREEN</div>
+      <div style="font-size:12px;color:#7ab3e8;line-height:1.9">
+        <strong style="color:#c8d8e8">iPhone:</strong> Tap the Share button → "Add to Home Screen"<br>
+        <strong style="color:#c8d8e8">Android:</strong> Tap Menu (⋮) → "Add to Home Screen"<br><br>
+        <span style="color:#5a7a9a;font-size:11px">The app will open full screen like a native app.</span>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px">
+      <div style="font-size:10px;color:#3a5a7a;font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:12px">ABOUT</div>
+      <div style="font-size:12px;color:#5a7a9a;line-height:1.8">
+        Hunter Family Hub v1.0<br>
+        Budget Dashboard · Swing Trade System<br>
+        Hosted free on GitHub Pages<br>
+        <span style="color:#3a5a7a">Built with Claude AI · No monthly fees</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Password System ─────────────────────────────────────────────────────────
+// Password is hashed and stored in localStorage
+// Default password: hunter2025
+
+async function hashPassword(pw) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+async function checkPassword() {
+  const pw = document.getElementById("pwInput").value;
+  if (!pw) return;
+  const hash = await hashPassword(pw);
+  const storedHash = localStorage.getItem("hunter_pw_hash");
+  // Default password hash (hunter2025)
+  const defaultHash = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
+
+  // First time: accept default password OR stored hash
+  const validHash = storedHash || await hashPassword("hunter2025");
+  if (hash === validHash || (!storedHash && pw === "hunter2025")) {
+    // Save session
+    sessionStorage.setItem("hunter_auth", "1");
+    if (!storedHash) localStorage.setItem("hunter_pw_hash", await hashPassword("hunter2025"));
+    showDashboard();
+  } else {
+    document.getElementById("pwError").style.display = "block";
+    document.getElementById("pwInput").value = "";
+    setTimeout(() => document.getElementById("pwError").style.display = "none", 3000);
+  }
+}
+
+async function changePassword() {
+  const p1 = document.getElementById("newPw1").value;
+  const p2 = document.getElementById("newPw2").value;
+  const msg = document.getElementById("pwChangeMsg");
+  if (!p1 || !p2) { msg.style.color="#e04040"; msg.textContent="Please enter a password"; return; }
+  if (p1 !== p2)  { msg.style.color="#e04040"; msg.textContent="Passwords don't match"; return; }
+  if (p1.length < 6) { msg.style.color="#e04040"; msg.textContent="Password must be at least 6 characters"; return; }
+  const hash = await hashPassword(p1);
+  localStorage.setItem("hunter_pw_hash", hash);
+  msg.style.color="#4bc99a";
+  msg.textContent="✓ Password updated successfully";
+  document.getElementById("newPw1").value = "";
+  document.getElementById("newPw2").value = "";
+  setTimeout(() => msg.textContent = "", 3000);
+}
+
+function logout() {
+  sessionStorage.removeItem("hunter_auth");
+  document.getElementById("dashboard").style.display = "none";
+  document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("pwInput").value = "";
+}
+
+function showDashboard() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("dashboard").style.display = "block";
+  document.getElementById("welcomeMsg").textContent =
+    "Welcome back · " + new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  document.getElementById("siteUrl").textContent = window.location.href.split("?")[0];
+  loadQuickStats();
+}
+
+// ── Tab System ──────────────────────────────────────────────────────────────
+function showTab(tab) {
+  ["home","budget","trading","settings"].forEach(t => {
+    document.getElementById("tab-"+t+"-content").style.display = t===tab ? "block" : "none";
+    const btn = document.getElementById("tab-"+t);
+    if (btn) btn.classList.toggle("active", t===tab);
+  });
+}
+
+// ── Quick Stats from localStorage ──────────────────────────────────────────
+function loadQuickStats() {
+  try {
+    const saved = localStorage.getItem("familyBudgetData_v2");
+    if (!saved) return;
+    const data = JSON.parse(saved);
+
+    // Budget health
+    const totalTax = (data.grossIncome || 0) * 0.0765 +
+      calcARTax((data.grossIncome||0) * ((data.arIncomeAllocation||50)/100));
+    const netMonthly = ((data.grossIncome||0) - totalTax) / 12;
+    const totalExp = [
+      ...Object.values(data.txExpenses||{}),
+      ...Object.values(data.arExpenses||{}),
+      ...Object.values(data.sharedExpenses||{})
+    ].reduce((a,b)=>a+Number(b),0);
+    const surplus = netMonthly - totalExp;
+
+    if (netMonthly > 0) {
+      const pct = Math.round((surplus/netMonthly)*100);
+      document.getElementById("budgetHealth").textContent =
+        surplus >= 0 ? "+$"+Math.round(surplus).toLocaleString() : "-$"+Math.round(Math.abs(surplus)).toLocaleString();
+      document.getElementById("budgetHealth").style.color = surplus >= 0 ? "#4bc99a" : "#e04040";
+      document.getElementById("budgetSub").textContent =
+        surplus >= 0 ? pct+"% of net saved / mo" : "Over budget";
+    }
+
+    // Last bill
+    const bills = data.billHistory || [];
+    if (bills.length > 0) {
+      const last = bills[0];
+      document.getElementById("lastBill").textContent = "$"+Number(last.amount).toFixed(2);
+      document.getElementById("lastBillSub").textContent =
+        (last.vendor||"Unknown") + " · " + (last.state||"");
+    }
+  } catch(e) {}
+}
+
+function calcARTax(income) {
+  if (income <= 0) return 0;
+  const brackets = [{limit:9000,rate:0.02},{limit:17900,rate:0.04},{limit:Infinity,rate:0.059}];
+  let tax=0,prev=0;
+  for (const b of brackets) {
+    if (income<=prev) break;
+    tax+=(Math.min(income,b.limit)-prev)*b.rate;
+    prev=b.limit;
+  }
+  return tax;
+}
+
+// Quick access shortcuts
+function handleQuick(action) {
+  if (action === "Import Bills") { showTab("budget"); }
+  else if (action === "Tax Estimate") { showTab("budget"); }
+  else if (action.startsWith("Analyze")) {
+    const sym = action.split(" ")[1];
+    showTab("trading");
+    // Pass ticker to iframe after it loads
+    setTimeout(() => {
+      try {
+        const frame = document.getElementById("tradingFrame");
+        if (frame && frame.contentWindow) {
+          frame.contentWindow.postMessage({action:"analyze",ticker:sym},"*");
+        }
+      } catch(e) {}
+    }, 800);
+  }
+}
+
+// Listen for messages from iframes
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.action === "analyze") {
+    const input = document.querySelector("#tradingFrame")?.contentDocument?.getElementById("tickerInput");
+    if (input) { input.value = e.data.ticker; }
+  }
+});
+
+// ── Init ────────────────────────────────────────────────────────────────────
+// Check if already authenticated this session
+if (sessionStorage.getItem("hunter_auth") === "1") {
+  showDashboard();
+}
+
+// Allow Enter key on password field
+document.getElementById("pwInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") checkPassword();
+});
+</script>
+</body>
+</html>
