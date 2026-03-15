@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hunter Family Budget · TX & AR</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { min-height: 100vh; }
+    body { background: #0a1628; }
+    input::-webkit-inner-spin-button, input::-webkit-outer-spin-button { display: none; }
+    input[type=number] { -moz-appearance: textfield; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .fade-in { animation: fadeIn 0.4s ease forwards; }
+    [data-netlify-identity-menu] { display: none !important; }
+    #login-screen {
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background-image: radial-gradient(ellipse at 20% 50%, rgba(26,107,74,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(123,45,0,0.15) 0%, transparent 50%),
+        linear-gradient(135deg, #0a1628 0%, #0f2040 50%, #0a1628 100%);
+      font-family: 'Lora', serif; color: #e8f2ff; padding: 24px;
+    }
+    #login-screen h1 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 800; margin-bottom: 8px; text-align: center; }
+    #login-screen p { color: #7ab3e8; font-family: 'DM Mono', monospace; font-size: 13px; text-align: center; margin-bottom: 32px; }
+    #login-btn { padding: 14px 40px; background: linear-gradient(135deg, #1a6b4a, #2d9e72); border: none; border-radius: 12px; color: #fff; font-family: 'DM Mono', monospace; font-size: 14px; letter-spacing: 1px; cursor: pointer; transition: opacity 0.2s; }
+    #login-btn:hover { opacity: 0.85; }
+    .state-badges { display: flex; gap: 8px; margin-bottom: 20px; }
+    .badge-tx { background: #1a6b4a; border-radius: 4px; padding: 3px 12px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; }
+    .badge-ar { background: #7b2d00; border-radius: 4px; padding: 3px 12px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; }
+    .login-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 40px 48px; max-width: 400px; width: 100%; text-align: center; backdrop-filter: blur(10px); }
+    .login-icon { font-size: 52px; margin-bottom: 16px; }
+    .login-note { font-size: 12px; color: #3a5a7a; margin-top: 16px; font-family: 'DM Mono', monospace; }
+  </style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="state-badges">
+    <span class="badge-tx">🤠 TEXAS</span>
+    <span class="badge-ar">🏔️ ARKANSAS</span>
+  </div>
+  <div class="login-card">
+    <div class="login-icon">🏡</div>
+    <h1>Hunter Family Budget</h1>
+    <p>Dual-State Dashboard · TX & AR</p>
+    <input id="budget-pw" type="password" placeholder="Enter family password..."
+      style="width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:10px;color:#fff;padding:13px 16px;font-size:16px;font-family:'DM Mono',monospace;letter-spacing:2px;margin-bottom:12px;box-sizing:border-box"/>
+    <button id="login-btn" onclick="checkBudgetPassword()">SIGN IN TO DASHBOARD</button>
+    <div id="budget-pw-error" style="color:#e04040;font-size:12px;margin-top:8px;font-family:'DM Mono',monospace;display:none">Incorrect password. Try again.</div>
+    <p class="login-note">Secure family access · Shared budget data</p>
+  </div>
+</div>
+
+<div id="app" style="display:none;"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+function calcARTax(income) {
+  if (income <= 0) return 0;
+  const brackets = [
+    { limit: 9000, rate: 0.02 },
+    { limit: 17900, rate: 0.04 },
+    { limit: Infinity, rate: 0.059 },
+  ];
+  let tax = 0, prev = 0;
+  for (const b of brackets) {
+    if (income <= prev) break;
+    tax += (Math.min(income, b.limit) - prev) * b.rate;
+    prev = b.limit;
+  }
+  return tax;
+}
+
+const DEFAULT_DATA = {
+  grossIncome: 0, arIncomeAllocation: 50, period: "monthly",
+  txExpenses: { mortgage:0, utilities:0, hoa:0, insurance:0, maintenance:0 },
+  arExpenses: { mortgage:0, utilities:0, hoa:0, insurance:0, maintenance:0 },
+  sharedExpenses: { groceries:0, dining:0, transportation:0, healthcare:0, entertainment:0, clothing:0, subscriptions:0, childcare:0, savings:0, other:0 },
+  billHistory: [], txPhoto: null, arPhoto: null, txPhotoLabel: "Texas Home", arPhotoLabel: "Arkansas Home",
+  lastUpdatedBy: "", lastUpdatedAt: "",
+};
+
+const CATEGORY_LABELS = {
+  mortgage:"Mortgage/Rent", utilities:"Utilities", hoa:"HOA", insurance:"Insurance", maintenance:"Maintenance",
+  groceries:"Groceries", dining:"Dining Out", transportation:"Transportation", healthcare:"Healthcare",
+  entertainment:"Entertainment", clothing:"Clothing", subscriptions:"Subscriptions",
+  childcare:"Childcare", savings:"Savings", other:"Other",
+};
+
+const COLORS_TX     = ["#1a6b4a","#2d9e72","#4bc99a","#7ddebb","#b0eed6"];
+const COLORS_AR     = ["#7b2d00","#c44b00","#f07030","#f5a070","#fad0b8"];
+const COLORS_SHARED = ["#1a3a6b","#2b5fb0","#4a8cd4","#7ab3e8","#b0d4f5","#d0e8fc","#c8e0ff","#a0c8f8","#e8f4ff","#f0f8ff"];
+
+const fmt = (n, annual=false) => "$" + Math.round(annual ? n*12 : n).toLocaleString();
+const STORAGE_KEY = "familyBudgetData_v2";
+
+const GMAIL_CLIENT_ID = "349663841426-qb9f40ufg5hdifkrsk1urmvqt0sgipr2.apps.googleusercontent.com";
+const GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.readonly";
+const BILL_SENDERS = [
+  "centerpoint","oncor","txu","reliant","nrg","luminant","cirro","green mountain","atmos","atmos energy","coserv","tri-county","pedernales",
+  "entergy","entergy arkansas","arkansas oklahoma gas","aog","centerpoint arkansas","conway","ozarks electric","carroll electric",
+  "water","city of","municipal","utility billing","utilities",
+  "mr. cooper","mrcooper","pennymac","loancare","lakeview","rocket mortgage","nationstar","flagstar","sps","servicer","mortgage","home loan",
+  "hoa","homeowner","association","management","firstservice","community","the pointe","pointe","property management",
+  "progressive","statefarm","state farm","allstate","geico","usaa","liberty mutual","farmers","nationwide","travelers","amica",
+  "att","at&t","verizon","tmobile","t-mobile","xfinity","comcast","spectrum","cox","centurylink","lumen","frontier","windstream",
+  "netflix","hulu","spotify","amazon","apple","google","disney","youtube","peacock","hbo","max","paramount","sling","fubo","microsoft","adobe","dropbox","icloud",
+  "chase","wellsfargo","well fargo","bankofamerica","bank of america","ally","discover","capital one","citi","synchrony","barclays",
+  "noreply@","billing@","invoices@","statements@","payments@","donotreply@"
+];
+
+const VENDOR_MAP = {
+  "oncor":"Oncor Electric","entergy":"Entergy Arkansas","entergy arkansas":"Entergy Arkansas",
+  "atmos":"Atmos Energy","atmos energy":"Atmos Energy","centerpoint":"CenterPoint Energy",
+  "txu":"TXU Energy","reliant":"Reliant Energy","mrcooper":"Mr. Cooper Mortgage",
+  "mr. cooper":"Mr. Cooper Mortgage","mr cooper":"Mr. Cooper Mortgage","pennymac":"PennyMac Mortgage",
+  "loancare":"LoanCare","rocket mortgage":"Rocket Mortgage","netflix":"Netflix","spotify":"Spotify",
+  "hulu":"Hulu","disney":"Disney+","hbo":"HBO Max","amazon":"Amazon","apple":"Apple","google":"Google",
+  "xfinity":"Xfinity","comcast":"Comcast","spectrum":"Spectrum","att":"AT&T","at&t":"AT&T",
+  "verizon":"Verizon","tmobile":"T-Mobile","t-mobile":"T-Mobile","progressive":"Progressive Insurance",
+  "statefarm":"State Farm","state farm":"State Farm","allstate":"Allstate","geico":"GEICO","usaa":"USAA",
+  "liberty mutual":"Liberty Mutual","chase":"Chase","wellsfargo":"Wells Fargo","well fargo":"Wells Fargo",
+  "bankofamerica":"Bank of America","bank of america":"Bank of America","capital one":"Capital One",
+  "discover":"Discover","ally":"Ally Bank","pointe":"The Pointe (AR)","the pointe":"The Pointe (AR)",
+};
+
+function cleanVendorName(fromRaw, fromEmail, subject) {
+  const fromLower = fromRaw.toLowerCase();
+  const emailLower = fromEmail.toLowerCase();
+  const subjectLower = subject.toLowerCase();
+  for (const [key, cleanName] of Object.entries(VENDOR_MAP)) {
+    if (fromLower.includes(key) || emailLower.includes(key) || subjectLower.includes(key)) return cleanName;
+  }
+  return fromRaw.split("<")[0].trim().replace(/['"]/g, "").trim() || fromEmail.split("@")[1]?.split(".")[0] || "Unknown Vendor";
+}
+
+let gmailAccessToken = null;
+
+function loadGapiScript() {
+  return new Promise((res) => {
+    if (window.google && window.google.accounts) { res(); return; }
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.onload = res;
+    document.head.appendChild(s);
+  });
+}
+
+async function signInGmail() {
+  await loadGapiScript();
+  return new Promise((res, rej) => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: GMAIL_CLIENT_ID, scope: GMAIL_SCOPES,
+      callback: (resp) => {
+        if (resp.error) { rej(resp.error); return; }
+        gmailAccessToken = resp.access_token;
+        try { localStorage.setItem("gmailToken", resp.access_token); } catch {}
+        res(resp.access_token);
+      },
+    });
+    client.requestAccessToken();
+  });
+}
+
+function signOutGmail() {
+  if (gmailAccessToken && window.google) window.google.accounts.oauth2.revoke(gmailAccessToken);
+  gmailAccessToken = null;
+  try { localStorage.removeItem("gmailToken"); } catch {}
+}
+
+async function fetchGmailBills(token) {
+  const query = encodeURIComponent("newer_than:90d (bill OR statement OR invoice OR payment due OR amount due OR your bill OR autopay OR new statement)");
+  const listRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100&q=" + query, { headers: { Authorization: "Bearer " + token } });
+  if (!listRes.ok) throw new Error("Gmail list failed: " + listRes.status);
+  const listData = await listRes.json();
+  const messages = listData.messages || [];
+  const bills = [];
+  for (const msg of messages.slice(0, 50)) {
+    try {
+      const msgRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + msg.id + "?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date", { headers: { Authorization: "Bearer " + token } });
+      if (!msgRes.ok) continue;
+      const msgData = await msgRes.json();
+      const headers = msgData.payload?.headers || [];
+      const from = (headers.find(h => h.name === "From")?.value || "").toLowerCase();
+      const subject = (headers.find(h => h.name === "Subject")?.value || "");
+      const date = headers.find(h => h.name === "Date")?.value || "";
+      const isBill = BILL_SENDERS.some(s => from.includes(s) || subject.toLowerCase().includes(s)) || /\$[\d,]+\.?\d*/.test(subject) || /(bill|statement|invoice|amount due|payment due|due date)/i.test(subject);
+      if (!isBill) continue;
+      const snippet = msgData.snippet || "";
+      const amountText = subject + " " + snippet;
+      const amountPatterns = [/\$([\d,]+\.\d{2})/,/\$([\d,]+)/,/amount(?:\s+due)?[:\s]+\$?([\d,]+\.?\d*)/i,/total[:\s]+\$?([\d,]+\.?\d*)/i,/payment[:\s]+\$?([\d,]+\.?\d*)/i,/due[:\s]+\$?([\d,]+\.?\d*)/i,/balance[:\s]+\$?([\d,]+\.?\d*)/i];
+      let amount = null;
+      for (const pattern of amountPatterns) { const m = amountText.match(pattern); if (m) { amount = parseFloat(m[1].replace(/,/g, "")); break; } }
+      const fromName = headers.find(h => h.name === "From")?.value || "";
+      const vendor = cleanVendorName(fromName, from, subject);
+      const combined = from + " " + subject + " " + (msgData.snippet || "");
+      const isTX = /(centerpoint|oncor|txu|reliant|atmos energy|coserv|pedernales|texas|tx\b)/i.test(combined);
+      const isAR = /(entergy arkansas|entergy ar|arkansas|\bAR\b|the pointe|bentonville|fayetteville|rogers|springdale|ozark)/i.test(combined);
+      const state = isTX ? "TX" : isAR ? "AR" : "SHARED";
+      const catText = from + " " + subject + " " + (msgData.snippet || "");
+      const cat = /(netflix|hulu|spotify|amazon prime|disney|hbo|peacock|paramount|youtube premium|apple tv|subscription|streaming)/i.test(catText) ? "subscriptions"
+        : /(electric|gas|water|energy|utility|power|oncor|entergy|centerpoint|txu|reliant|atmos)/i.test(catText) ? "utilities"
+        : /(mortgage|home loan|mr.cooper|mr cooper|pennymac|loancare|rocket mortgage|nationstar|flagstar)/i.test(catText) ? "mortgage"
+        : /(hoa|homeowner.{0,10}association|community management|property management|the pointe|pointe at)/i.test(catText) ? "hoa"
+        : /(insurance|progressive|statefarm|state farm|allstate|geico|usaa|liberty mutual|farmers|nationwide)/i.test(catText) ? "insurance"
+        : /(att|at&t|verizon|tmobile|t-mobile|xfinity|comcast|spectrum|cox|phone|internet|wireless)/i.test(catText) ? "utilities"
+        : "other";
+      bills.push({ id: msg.id, gmailId: msg.id, vendor, amount, dueDate: null, state, category: cat, confidence: amount ? "high" : "medium", notes: subject, fileName: "Gmail: " + subject.slice(0, 50), source: "gmail", rawDate: date });
+    } catch(e) { continue; }
+  }
+  return bills;
+}
+
+function getPreloadedPhotos() {
+  try {
+    const tx = document.getElementById("tx-photo-data");
+    const ar = document.getElementById("ar-photo-data");
+    return { txPhoto: tx ? tx.src : null, arPhoto: ar ? ar.src : null };
+  } catch(e) { return {}; }
+}
+
+async function loadSharedData(token) {
+  const preloaded = getPreloadedPhotos();
+  try {
+    const ls = localStorage.getItem(STORAGE_KEY);
+    const saved = ls ? JSON.parse(ls) : null;
+    if (saved) return { ...saved, txPhoto: saved.txPhoto || preloaded.txPhoto, arPhoto: saved.arPhoto || preloaded.arPhoto };
+  } catch {}
+  return { ...DEFAULT_DATA, ...preloaded };
+}
+
+async function saveSharedData(data, token) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+const Spinner = () => (
+  <div style={{ display:"inline-block", width:18, height:18, border:"2px solid rgba(255,255,255,0.2)", borderTop:"2px solid #4bc99a", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+);
+
+const StateBadge = ({ state }) => {
+  const cfg = state==="TX" ? { bg:"rgba(45,158,114,0.2)", color:"#4bc99a", border:"rgba(45,158,114,0.4)", label:"🤠 TEXAS" }
+    : state==="AR" ? { bg:"rgba(196,75,0,0.2)", color:"#f07030", border:"rgba(196,75,0,0.4)", label:"🏔️ ARKANSAS" }
+    : { bg:"rgba(43,95,176,0.2)", color:"#7ab3e8", border:"rgba(43,95,176,0.4)", label:"🏠 SHARED" };
+  return <span style={{ padding:"2px 10px", borderRadius:20, fontSize:10, fontFamily:"'DM Mono', monospace", letterSpacing:1, background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}` }}>{cfg.label}</span>;
+};
+
+function HomePhotoCard({ photo, label, color, emoji, onUpload, onLabelChange, compact }) {
+  const inputRef = React.useRef();
+  const [editing, setEditing] = React.useState(false);
+  const [labelVal, setLabelVal] = React.useState(label);
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (e) => onUpload(e.target.result);
+    reader.readAsDataURL(file);
+  };
+  if (compact) {
+    return (
+      <div style={{ position:"relative", borderRadius:12, overflow:"hidden", height:140, background:"rgba(255,255,255,0.04)", border:`1px solid ${color}40`, cursor: photo?"default":"pointer" }}
+        onClick={() => !photo && inputRef.current?.click()} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();handleFile(e.dataTransfer.files[0]);}}>
+        {photo ? (<>
+          <img src={photo} alt={label} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(10,22,40,0.85) 0%, transparent 50%)" }} />
+          <div style={{ position:"absolute", bottom:10, left:12, right:12, display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
+            <div style={{ fontFamily:"'Playfair Display', serif", fontSize:15, fontWeight:700, color:"#fff", textShadow:"0 1px 4px rgba(0,0,0,0.8)" }}>{emoji} {label}</div>
+            <button onClick={e=>{e.stopPropagation();inputRef.current?.click();}} style={{ padding:"3px 8px", background:"rgba(255,255,255,0.2)", border:"none", borderRadius:6, color:"#fff", fontSize:10, fontFamily:"'DM Mono', monospace", cursor:"pointer" }}>Change</button>
+          </div>
+        </>) : (
+          <div style={{ height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
+            <div style={{ fontSize:32 }}>{emoji}</div>
+            <div style={{ fontSize:12, color:color, fontFamily:"'DM Mono', monospace" }}>Click to add photo</div>
+          </div>
+        )}
+        <input ref={inputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={e=>handleFile(e.target.files[0])} />
+      </div>
+    );
+  }
+  return (
+    <div style={{ borderRadius:16, overflow:"hidden", marginBottom:20, border:`1px solid ${color}30`, background:"rgba(255,255,255,0.03)" }}>
+      <div style={{ position:"relative", height:220, background: photo ? "none" : `linear-gradient(135deg, ${color}15, rgba(255,255,255,0.03))`, cursor: photo ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+        onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();handleFile(e.dataTransfer.files[0]);}}>
+        {photo ? (<>
+          <img src={photo} alt={label} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(10,22,40,0.7) 0%, transparent 40%)" }} />
+          <button onClick={()=>inputRef.current?.click()} style={{ position:"absolute", top:12, right:12, padding:"5px 12px", background:"rgba(0,0,0,0.5)", border:`1px solid ${color}60`, borderRadius:8, color:"#fff", fontSize:11, fontFamily:"'DM Mono', monospace", cursor:"pointer" }}>📷 Change Photo</button>
+        </>) : (
+          <div onClick={()=>inputRef.current?.click()} style={{ textAlign:"center", padding:24 }}>
+            <div style={{ fontSize:52, marginBottom:12 }}>{emoji}</div>
+            <div style={{ fontFamily:"'Playfair Display', serif", fontSize:17, color:color, marginBottom:6 }}>Add a photo of your {label}</div>
+            <div style={{ fontSize:12, color:"#3a5a7a", fontFamily:"'DM Mono', monospace" }}>Click or drag an image here</div>
+          </div>
+        )}
+        <input ref={inputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={e=>handleFile(e.target.files[0])} />
+      </div>
+      <div style={{ padding:"10px 16px", display:"flex", alignItems:"center", gap:8, borderTop:`1px solid ${color}20` }}>
+        {editing ? (<>
+          <input value={labelVal} onChange={e=>setLabelVal(e.target.value)} style={{ flex:1, background:"rgba(255,255,255,0.08)", border:`1px solid ${color}60`, borderRadius:6, color:"#fff", padding:"5px 10px", fontSize:13, fontFamily:"'Lora', serif", outline:"none" }}
+            onKeyDown={e=>{if(e.key==="Enter"){onLabelChange(labelVal);setEditing(false);}if(e.key==="Escape")setEditing(false);}} autoFocus />
+          <button onClick={()=>{onLabelChange(labelVal);setEditing(false);}} style={{ padding:"5px 12px", background:color, border:"none", borderRadius:6, color:"#fff", fontSize:11, fontFamily:"'DM Mono', monospace", cursor:"pointer" }}>Save</button>
+        </>) : (<>
+          <span style={{ flex:1, fontSize:13, color:"#c8d8e8", fontFamily:"'Lora', serif" }}>{emoji} {label}</span>
+          <button onClick={()=>setEditing(true)} style={{ padding:"4px 10px", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:6, color:"#7ab3e8", fontSize:11, fontFamily:"'DM Mono', monospace", cursor:"pointer" }}>✏️ Rename</button>
+          {photo && <button onClick={()=>onUpload(null)} style={{ padding:"4px 10px", background:"rgba(224,64,64,0.1)", border:"1px solid rgba(224,64,64,0.2)", borderRadius:6, color:"#e04040", fontSize:11, fontFamily:"'DM Mono', monospace", cursor:"pointer" }}>Remove</button>}
+        </>)}
+      </div>
+    </div>
+  );
+}
+
+function SVGDonutChart({ data }) {
+  const [tooltip, setTooltip] = useState(null);
+  const size = 260, cx = 130, cy = 130, R = 100, r = 58;
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return <div style={{height:260,display:"flex",alignItems:"center",justifyContent:"center",color:"#3a5a7a",fontFamily:"'DM Mono', monospace",fontSize:12}}>No data yet</div>;
+  let angle = -Math.PI / 2;
+  const slices = data.map((d, i) => {
+    const a = (d.value / total) * 2 * Math.PI;
+    const x1 = cx + R * Math.cos(angle), y1 = cy + R * Math.sin(angle);
+    const x2 = cx + R * Math.cos(angle + a), y2 = cy + R * Math.sin(angle + a);
+    const xi1 = cx + r * Math.cos(angle), yi1 = cy + r * Math.sin(angle);
+    const xi2 = cx + r * Math.cos(angle + a), yi2 = cy + r * Math.sin(angle + a);
+    const large = a > Math.PI ? 1 : 0;
+    const path = `M${x1},${y1} A${R},${R},0,${large},1,${x2},${y2} L${xi2},${yi2} A${r},${r},0,${large},0,${xi1},${yi1} Z`;
+    const fill = d.group==="tx" ? COLORS_TX[i%5] : d.group==="ar" ? COLORS_AR[i%5] : COLORS_SHARED[i%10];
+    angle += a;
+    return { path, fill, name: d.name, value: d.value };
+  });
+  return (
+    <div style={{ position:"relative" }}>
+      <svg width={size} height={size} style={{ display:"block", margin:"0 auto" }}>
+        {slices.map((s, i) => (
+          <path key={i} d={s.path} fill={s.fill} stroke="#0f2040" strokeWidth={2} style={{ cursor:"pointer" }}
+            onMouseEnter={e => setTooltip({ name:s.name, value:s.value, x:e.clientX, y:e.clientY })}
+            onMouseLeave={() => setTooltip(null)} />
+        ))}
+        <text x={cx} y={cy-8} textAnchor="middle" fill="#c8d8e8" fontSize={13} fontFamily="'DM Mono', monospace">TOTAL</text>
+        <text x={cx} y={cy+12} textAnchor="middle" fill="#4bc99a" fontSize={16} fontWeight="bold" fontFamily="'DM Mono', monospace">${Math.round(total).toLocaleString()}</text>
+      </svg>
+      {tooltip && <div style={{ position:"fixed", left:tooltip.x+12, top:tooltip.y-10, background:"#0f2040", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"8px 12px", fontSize:12, fontFamily:"'DM Mono', monospace", color:"#e8f2ff", pointerEvents:"none", zIndex:999, whiteSpace:"nowrap" }}>
+        <div style={{color:"#7ab3e8",marginBottom:2}}>{tooltip.name}</div>
+        <div style={{color:"#4bc99a",fontWeight:700}}>${Math.round(tooltip.value).toLocaleString()}</div>
+      </div>}
+    </div>
+  );
+}
+
+function SVGBarChart({ data }) {
+  const [tooltip, setTooltip] = useState(null);
+  const W = 420, H = 240, padL = 48, padB = 36, padT = 16, padR = 16;
+  const barColors = ["#2d9e72","#c44b00","#2b5fb0","#f07030","#4bc99a"];
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const bw = (W - padL - padR) / data.length;
+  const barW = bw * 0.55;
+  const yTicks = 4;
+  return (
+    <div style={{ position:"relative" }}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H+padB}`} style={{ display:"block" }}>
+        {Array.from({length:yTicks+1},(_,i)=>{
+          const y = padT + (H-padT) * (1 - i/yTicks);
+          const val = (maxVal * i/yTicks);
+          return <g key={i}><line x1={padL} x2={W-padR} y1={y} y2={y} stroke="rgba(255,255,255,0.07)" strokeWidth={1} /><text x={padL-6} y={y+4} textAnchor="end" fill="#5a7a9a" fontSize={9} fontFamily="'DM Mono', monospace">${val>=1000?(val/1000).toFixed(0)+"k":Math.round(val)}</text></g>;
+        })}
+        {data.map((d, i) => {
+          const x = padL + i*bw + (bw-barW)/2;
+          const bh = Math.max(2, ((d.value/maxVal) * (H-padT)));
+          const y = padT + (H-padT) - bh;
+          return <g key={i}><rect x={x} y={y} width={barW} height={bh} fill={barColors[i%barColors.length]} rx={4} style={{ cursor:"pointer" }} onMouseEnter={e => setTooltip({ name:d.name, value:d.value, x:e.clientX, y:e.clientY })} onMouseLeave={() => setTooltip(null)} /><text x={x+barW/2} y={H+padT+2} textAnchor="middle" fill="#7ab3e8" fontSize={10} fontFamily="'DM Mono', monospace">{d.name}</text></g>;
+        })}
+      </svg>
+      {tooltip && <div style={{ position:"fixed", left:tooltip.x+12, top:tooltip.y-10, background:"#0f2040", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"8px 12px", fontSize:12, fontFamily:"'DM Mono', monospace", color:"#e8f2ff", pointerEvents:"none", zIndex:999 }}>
+        <div style={{color:"#7ab3e8",marginBottom:2}}>{tooltip.name}</div>
+        <div style={{color:"#4bc99a",fontWeight:700}}>${Math.round(tooltip.value).toLocaleString()}</div>
+      </div>}
+    </div>
+  );
+}
+
+function App({ user, onLogout }) {
+  const [data, setData] = useState(DEFAULT_DATA);
+  const [loaded, setLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [dragOver, setDragOver] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [parseQueue, setParseQueue] = useState([]);
+  const [pendingBills, setPendingBills] = useState(() => {
+    try { const saved = localStorage.getItem("pendingBills"); return saved ? JSON.parse(saved) : []; } catch { return []; }
+  });
+  const importedIds = useRef(new Set((() => {
+    try { const saved = localStorage.getItem("importedGmailIds"); return saved ? JSON.parse(saved) : []; } catch { return []; }
+  })()));
+  const [parseError, setParseError] = useState("");
+  const [syncStatus, setSyncStatus] = useState("idle");
+  const [refreshing, setRefreshing] = useState(false);
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const [gmailScanning, setGmailScanning] = useState(false);
+  const [gmailEmail, setGmailEmail] = useState("");
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const fileRef = useRef();
+  const saveTimer = useRef();
+  const token = user?.token?.access_token || "";
+
+  useEffect(() => {
+    loadSharedData(token).then(d => { if (d) setData(prev => ({ ...DEFAULT_DATA, ...d })); setLoaded(true); });
+  }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem("pendingBills", JSON.stringify(pendingBills)); } catch {}
+  }, [pendingBills]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    setSyncStatus("saving");
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      const withMeta = { ...data, lastUpdatedBy: user?.email || "family", lastUpdatedAt: new Date().toISOString() };
+      await saveSharedData(withMeta, token);
+      setSyncStatus("saved");
+      setTimeout(() => setSyncStatus("idle"), 2500);
+    }, 900);
+  }, [data, loaded]);
+
+  const isAnnual = data.period === "annual";
+  const mult = isAnnual ? 12 : 1;
+  const arAllocated = data.grossIncome * (data.arIncomeAllocation / 100);
+  const arTaxAnnual = calcARTax(arAllocated);
+  const ficaAnnual = data.grossIncome * 0.0765;
+  const totalTaxAnn = arTaxAnnual + ficaAnnual;
+  const netMonthly = (data.grossIncome - totalTaxAnn) / 12;
+  const txTotal = Object.values(data.txExpenses).reduce((a,b) => a + Number(b), 0);
+  const arTotal = Object.values(data.arExpenses).reduce((a,b) => a + Number(b), 0);
+  const sharedTotal = Object.values(data.sharedExpenses).reduce((a,b) => a + Number(b), 0);
+  const totalExp = txTotal + arTotal + sharedTotal;
+  const surplus = netMonthly - totalExp;
+  const healthColor = surplus > 500 ? "#2d9e72" : surplus > 0 ? "#f0a030" : "#e04040";
+  const healthPct = Math.min(100, Math.max(0, (surplus / netMonthly) * 100));
+
+  const update = (section, key, val) => setData(prev => ({ ...prev, [section]: { ...prev[section], [key]: Number(val) || 0 } }));
+
+  const toBase64 = file => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); });
+
+  const parseBill = async (file) => {
+    const base64 = await toBase64(file);
+    const prompt = `You are a bill parser for a household with homes in both Texas and Arkansas. Analyze this PDF bill carefully.
+Return ONLY a valid JSON object — no markdown, no explanation:
+{"vendor":"company name","amount":123.45,"dueDate":"MM/DD/YYYY or null","billingPeriod":"e.g. June 2025 or null","serviceAddress":"full address if visible or null","state":"TX or AR or SHARED","category":"mortgage|utilities|hoa|insurance|maintenance|groceries|dining|transportation|healthcare|entertainment|clothing|subscriptions|childcare|savings|other","confidence":"high|medium|low","notes":"one sentence about what this bill is"}`;
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 800, messages: [{ role: "user", content: [{ type:"document", source:{ type:"base64", media_type:"application/pdf", data:base64 } }, { type:"text", text:prompt }] }] })
+    });
+    const json = await res.json();
+    const text = json.content?.map(c => c.text||"").join("") || "";
+    return { ...JSON.parse(text.replace(/```json|```/g,"").trim()), fileName:file.name, id: Date.now()+Math.random() };
+  };
+
+  const handleFiles = async (files) => {
+    const pdfs = Array.from(files).filter(f => f.type==="application/pdf" || f.name.endsWith(".pdf"));
+    if (!pdfs.length) { setParseError("Please upload PDF files only."); return; }
+    setParseError(""); setParsing(true);
+    setParseQueue(pdfs.map(f => ({ name:f.name, status:"parsing" })));
+    const results = [];
+    for (let i=0; i<pdfs.length; i++) {
+      try {
+        const bill = await parseBill(pdfs[i]);
+        results.push({ ...bill, status:"pending" });
+        setParseQueue(q => q.map((item,idx) => idx===i ? { ...item, status:"done" } : item));
+      } catch(e) { setParseQueue(q => q.map((item,idx) => idx===i ? { ...item, status:"error" } : item)); }
+    }
+    setParsing(false);
+    if (results.length) { setPendingBills(prev => [...prev, ...results]); setActiveTab("import"); }
+  };
+
+  const confirmBill = (bill, edits) => {
+    const final = { ...bill, ...edits, confirmedAt: new Date().toISOString(), confirmedBy: user?.email || "family" };
+    setData(prev => {
+      const sec = edits.state==="TX" ? "txExpenses" : edits.state==="AR" ? "arExpenses" : "sharedExpenses";
+      const cat = edits.category in prev[sec] ? edits.category : "other";
+      return { ...prev, [sec]: { ...prev[sec], [cat]: Number(edits.amount)||prev[sec][cat] }, billHistory:[final,...(prev.billHistory||[])].slice(0,200) };
+    });
+    setPendingBills(prev => prev.filter(b => b.id!==bill.id));
+  };
+
+  const dismissBill = id => setPendingBills(prev => prev.filter(b => b.id!==id));
+
+  const pieData = [
+    ...Object.entries(data.txExpenses).filter(([,v])=>v>0).map(([k,v])=>({name:`TX: ${CATEGORY_LABELS[k]}`,value:v*mult,group:"tx"})),
+    ...Object.entries(data.arExpenses).filter(([,v])=>v>0).map(([k,v])=>({name:`AR: ${CATEGORY_LABELS[k]}`,value:v*mult,group:"ar"})),
+    ...Object.entries(data.sharedExpenses).filter(([,v])=>v>0).map(([k,v])=>({name:CATEGORY_LABELS[k],value:v*mult,group:"shared"})),
+  ];
+  const barData = [
+    { name:"TX Home", value:txTotal*mult }, { name:"AR Home", value:arTotal*mult },
+    { name:"Shared", value:sharedTotal*mult }, { name:"Taxes", value:(totalTaxAnn/12)*mult },
+    { name:"Surplus", value:Math.max(0,surplus)*mult },
+  ];
+
+  const handleTxPhoto = (dataUrl) => setData(d => ({ ...d, txPhoto: dataUrl }));
+  const handleArPhoto = (dataUrl) => setData(d => ({ ...d, arPhoto: dataUrl }));
+  const handleTxLabel = (val) => setData(d => ({ ...d, txPhotoLabel: val }));
+  const handleArLabel = (val) => setData(d => ({ ...d, arPhotoLabel: val }));
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { const fresh = await loadSharedData(token); if (fresh) setData(fresh); } catch(e) {}
+    setRefreshing(false);
+  };
+
+  const handleGmailConnect = async () => {
+    try {
+      const gToken = await signInGmail();
+      const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", { headers: { Authorization: "Bearer " + gToken } });
+      const profile = await profileRes.json();
+      setGmailEmail(profile.emailAddress || "Gmail");
+      setGmailConnected(true);
+      handleGmailScan(gToken);
+    } catch(e) { alert("Gmail connection failed. Make sure popups are allowed and try again."); }
+  };
+
+  const handleGmailScan = async (gToken) => {
+    const tokenToUse = gToken || gmailAccessToken;
+    if (!tokenToUse) return;
+    setGmailScanning(true); setActiveTab("import");
+    try {
+      const bills = await fetchGmailBills(tokenToUse);
+      if (bills.length > 0) {
+        setPendingBills(prev => { const existingIds = new Set(prev.map(b => b.notes)); return [...prev, ...bills.filter(b => !existingIds.has(b.notes))]; });
+      } else { alert("No bill emails found in the last 90 days. Try uploading PDFs instead."); }
+    } catch(e) { alert("Gmail scan failed: " + e.message); }
+    setGmailScanning(false);
+  };
+
+  const handleGmailDisconnect = () => { signOutGmail(); setGmailConnected(false); setGmailEmail(""); };
+
+  const InputRow = ({ label, section, field, value }) => (
+    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+      <label style={{ fontSize:13,color:"#c8d8e8",fontFamily:"'Lora', serif" }}>{label}</label>
+      <div style={{ display:"flex",alignItems:"center",gap:4 }}>
+        <span style={{ color:"#7ab3e8",fontSize:12 }}>$</span>
+        <input type="number" value={value} onChange={e=>update(section,field,e.target.value)}
+          style={{ width:90,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:6,color:"#fff",padding:"4px 8px",fontSize:13,textAlign:"right",fontFamily:"'DM Mono', monospace",outline:"none" }} />
+      </div>
+    </div>
+  );
+
+  const PendingCard = ({ bill }) => {
+    const [edits, setEdits] = useState({ amount:bill.amount, state:bill.state, category:bill.category });
+    return (
+      <div style={{ background:"rgba(255,255,255,0.05)",borderRadius:14,padding:20,border:`1px solid ${bill.confidence==="high"?"rgba(75,201,154,0.3)":bill.confidence==="medium"?"rgba(240,160,48,0.3)":"rgba(224,64,64,0.3)"}`,marginBottom:14 }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12 }}>
+          <div>
+            <div style={{ fontFamily:"'Playfair Display', serif",fontSize:16,fontWeight:700 }}>{bill.vendor}</div>
+            <div style={{ fontSize:11,color:"#5a7a9a",fontFamily:"'DM Mono', monospace",marginTop:2 }}>{bill.fileName}</div>
+          </div>
+          <span style={{ fontSize:10,fontFamily:"'DM Mono', monospace",letterSpacing:1,color:bill.confidence==="high"?"#4bc99a":bill.confidence==="medium"?"#f0a030":"#e04040" }}>{(bill.confidence||"").toUpperCase()} CONFIDENCE</span>
+        </div>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12 }}>
+          {[
+            { label:"AMOUNT", content:(<div style={{ display:"flex",alignItems:"center",gap:4 }}><span style={{ color:"#7ab3e8",fontSize:12 }}>$</span><input type="number" value={edits.amount} onChange={e=>setEdits(x=>({...x,amount:e.target.value}))} style={{ width:"100%",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:6,color:"#4bc99a",padding:"6px 8px",fontSize:15,fontFamily:"'DM Mono', monospace",outline:"none",fontWeight:700 }} /></div>) },
+            { label:"STATE", content:(<select value={edits.state} onChange={e=>setEdits(x=>({...x,state:e.target.value}))} style={{ width:"100%",background:"#0f2040",border:"1px solid rgba(255,255,255,0.2)",borderRadius:6,color:"#fff",padding:"7px 8px",fontSize:12,fontFamily:"'DM Mono', monospace",outline:"none" }}><option value="TX">🤠 Texas</option><option value="AR">🏔️ Arkansas</option><option value="SHARED">🏠 Shared</option></select>) },
+            { label:"CATEGORY", content:(<select value={edits.category} onChange={e=>setEdits(x=>({...x,category:e.target.value}))} style={{ width:"100%",background:"#0f2040",border:"1px solid rgba(255,255,255,0.2)",borderRadius:6,color:"#fff",padding:"7px 8px",fontSize:12,fontFamily:"'DM Mono', monospace",outline:"none" }}>{Object.entries(CATEGORY_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select>) },
+          ].map(col=>(<div key={col.label}><div style={{ fontSize:10,color:"#5a7a9a",fontFamily:"'DM Mono', monospace",letterSpacing:1,marginBottom:4 }}>{col.label}</div>{col.content}</div>))}
+        </div>
+        {bill.notes && <div style={{ fontSize:12,color:"#7ab3e8",marginBottom:10,padding:"8px 12px",background:"rgba(43,95,176,0.15)",borderRadius:8 }}>💡 {bill.notes}</div>}
+        <div style={{ display:"flex",gap:8 }}>
+          <button onClick={()=>confirmBill(bill,edits)} style={{ flex:1,padding:"10px",background:"linear-gradient(135deg, #1a6b4a, #2d9e72)",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono', monospace",fontSize:12,cursor:"pointer",letterSpacing:1 }}>✓ APPLY TO BUDGET</button>
+          <button onClick={()=>dismissBill(bill.id)} style={{ padding:"10px 16px",background:"rgba(224,64,64,0.1)",border:"1px solid rgba(224,64,64,0.3)",borderRadius:8,color:"#e04040",fontFamily:"'DM Mono', monospace",fontSize:12,cursor:"pointer" }}>✕</button>
+        </div>
+      </div>
+    );
+  };
+
+  if (!loaded) return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0a1628",color:"#7ab3e8",fontFamily:"'DM Mono', monospace",gap:12 }}><Spinner /> Loading your budget...</div>;
+
+  const tabs = [
+    ["overview","Overview"],
+    ["import", "📥 Import" + (pendingBills.length ? " (" + pendingBills.length + ")" : "")],
+    ["history","📋 History"],["texas","🤠 Texas"],["arkansas","🏔️ Arkansas"],["shared","🏠 Shared"],["taxes","Tax Estimate"],
+  ];
+
+  return (
+    <div style={{ minHeight:"100vh",fontFamily:"'Lora', serif",color:"#e8f2ff",backgroundImage:"radial-gradient(ellipse at 20% 50%, rgba(26,107,74,0.12) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(123,45,0,0.12) 0%, transparent 50%), linear-gradient(135deg, #0a1628 0%, #0f2040 50%, #0a1628 100%)" }}
+      onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)}>
+      {dragOver && <div onDragOver={e=>e.preventDefault()} onDragLeave={()=>setDragOver(false)} onDrop={e=>{e.preventDefault();setDragOver(false);handleFiles(e.dataTransfer.files);}}
+        style={{ position:"fixed",inset:0,background:"rgba(10,22,40,0.93)",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"3px dashed #4bc99a" }}>
+        <div style={{ fontSize:64,marginBottom:16 }}>📄</div>
+        <div style={{ fontFamily:"'Playfair Display', serif",fontSize:28,color:"#4bc99a" }}>Drop your bills here</div>
+      </div>}
+      <input ref={fileRef} type="file" accept=".pdf,application/pdf" multiple style={{ display:"none" }} onChange={e=>handleFiles(e.target.files)} />
+      <div style={{ maxWidth:1200,margin:"0 auto",padding:"28px 32px 0" }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:16 }}>
+          <div>
+            <div style={{ display:"flex",gap:6,marginBottom:4 }}>
+              <span style={{ background:"#1a6b4a",borderRadius:4,padding:"2px 10px",fontSize:11,fontFamily:"'DM Mono', monospace",letterSpacing:1 }}>🤠 TEXAS</span>
+              <span style={{ background:"#7b2d00",borderRadius:4,padding:"2px 10px",fontSize:11,fontFamily:"'DM Mono', monospace",letterSpacing:1 }}>🏔️ ARKANSAS</span>
+            </div>
+            <h1 style={{ fontFamily:"'Playfair Display', serif",fontSize:30,fontWeight:800,margin:0 }}>Hunter Family Budget</h1>
+            <div style={{ display:"flex",alignItems:"center",gap:10,marginTop:4 }}>
+              <p style={{ margin:0,color:"#7ab3e8",fontSize:12,fontFamily:"'DM Mono', monospace" }}>Household Financial Dashboard</p>
+              {syncStatus==="saving" && <span style={{ fontSize:11,fontFamily:"'DM Mono', monospace",color:"#5a7a9a",display:"flex",alignItems:"center",gap:6 }}><Spinner /> syncing…</span>}
+              {syncStatus==="saved" && <span style={{ fontSize:11,fontFamily:"'DM Mono', monospace",color:"#4bc99a" }}>✓ synced</span>}
+            </div>
+          </div>
+          <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
+            <button onClick={handleRefresh} disabled={refreshing} style={{ padding:"8px 18px",borderRadius:20,border:"1px solid rgba(122,179,232,0.4)",cursor:"pointer",fontFamily:"'DM Mono', monospace",fontSize:11,letterSpacing:1,background:"rgba(122,179,232,0.1)",color:"#7ab3e8",display:"flex",alignItems:"center",gap:6,opacity:refreshing?0.6:1 }}>
+              {refreshing ? "SYNCING…" : "🔄 REFRESH"}
+            </button>
+            <button onClick={()=>fileRef.current?.click()} style={{ padding:"8px 18px",borderRadius:20,border:"1px solid rgba(75,201,154,0.4)",cursor:"pointer",fontFamily:"'DM Mono', monospace",fontSize:11,letterSpacing:1,background:"rgba(75,201,154,0.1)",color:"#4bc99a" }}>📥 IMPORT BILLS</button>
+            {["monthly","annual"].map(p=>(<button key={p} onClick={()=>setData(d=>({...d,period:p}))} style={{ padding:"8px 18px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"'DM Mono', monospace",fontSize:11,letterSpacing:1,textTransform:"uppercase",background:data.period===p?"#2b5fb0":"rgba(255,255,255,0.08)",color:data.period===p?"#fff":"#7ab3e8" }}>{p}</button>))}
+            <div style={{ position:"relative" }}>
+              <button onClick={()=>setShowUserMenu(x=>!x)} style={{ padding:"8px 16px",borderRadius:20,border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer",fontFamily:"'DM Mono', monospace",fontSize:11,background:"rgba(255,255,255,0.06)",color:"#c8d8e8" }}>👤 {(user?.email||"").split("@")[0]}</button>
+              {showUserMenu && <div style={{ position:"absolute",right:0,top:"calc(100% + 6px)",background:"#0f2040",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:8,minWidth:160,zIndex:100 }}>
+                <div style={{ fontSize:11,color:"#5a7a9a",fontFamily:"'DM Mono', monospace",padding:"6px 10px",borderBottom:"1px solid rgba(255,255,255,0.08)",marginBottom:4 }}>{user?.email}</div>
+                <button onClick={onLogout} style={{ width:"100%",padding:"8px 10px",background:"rgba(224,64,64,0.1)",border:"none",borderRadius:6,color:"#e04040",fontFamily:"'DM Mono', monospace",fontSize:11,cursor:"pointer",textAlign:"left",marginTop:4 }}>Sign Out</button>
+              </div>}
+            </div>
+          </div>
+        </div>
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px,1fr))",gap:14,marginTop:24 }}>
+          {[
+            { label:"Gross Income", value:fmt(data.grossIncome/12,isAnnual), sub:isAnnual?"per year":"per month", color:"#4bc99a" },
+            { label:"Est. Taxes", value:fmt(totalTaxAnn/12,isAnnual), sub:`AR ${Math.round(data.arIncomeAllocation)}% alloc`, color:"#f07030" },
+            { label:"Net Take-Home", value:fmt(netMonthly,isAnnual), sub:"after taxes", color:"#7ab3e8" },
+            { label:"Total Expenses", value:fmt(totalExp,isAnnual), sub:"both homes + shared", color:"#f5a070" },
+            { label:surplus>=0?"Surplus":"Deficit", value:fmt(Math.abs(surplus),isAnnual), sub:surplus>=0?"available":"over budget", color:healthColor },
+            { label:"Bills Imported", value:(data.billHistory||[]).length, sub:"all time", color:"#b0d4f5" },
+          ].map(c=>(<div key={c.label} style={{ background:"rgba(255,255,255,0.05)",borderRadius:12,padding:"16px 18px",border:"1px solid rgba(255,255,255,0.09)" }}>
+            <div style={{ fontSize:10,color:"#7ab3e8",fontFamily:"'DM Mono', monospace",letterSpacing:1,textTransform:"uppercase",marginBottom:5 }}>{c.label}</div>
+            <div style={{ fontSize:21,fontWeight:700,color:c.color,fontFamily:"'DM Mono', monospace" }}>{c.value}</div>
+            <div style={{ fontSize:11,color:"#5a7a9a",marginTop:3 }}>{c.sub}</div>
+          </div>))}
+        </div>
+        <div style={{ marginTop:16,background:"rgba(255,255,255,0.05)",borderRadius:12,padding:"14px 20px",border:"1px solid rgba(255,255,255,0.09)" }}>
+          <div style={{ display:"flex",justifyContent:"space-between",marginBottom:7 }}>
+            <span style={{ fontSize:11,fontFamily:"'DM Mono', monospace",color:"#7ab3e8",letterSpacing:1 }}>BUDGET HEALTH</span>
+            <span style={{ fontSize:11,fontFamily:"'DM Mono', monospace",color:healthColor }}>{surplus>=0?`${Math.round(healthPct)}% of net saved`:"OVER BUDGET"}</span>
+          </div>
+          <div style={{ height:7,background:"rgba(255,255,255,0.1)",borderRadius:4,overflow:"hidden" }}>
+            <div style={{ height:"100%",width:`${healthPct}%`,background:healthColor,borderRadius:4,transition:"width 0.6s ease" }} />
+          </div>
+        </div>
+      </div>
+      <div style={{ maxWidth:1200,margin:"20px auto 0",padding:"0 32px" }}>
+        <div style={{ display:"flex",gap:2,borderBottom:"1px solid rgba(255,255,255,0.09)",overflowX:"auto" }}>
+          {tabs.map(([id,label])=>(<button key={id} onClick={()=>setActiveTab(id)} style={{ padding:"9px 15px",background:"none",border:"none",cursor:"pointer",fontFamily:"'DM Mono', monospace",fontSize:11,letterSpacing:0.5,color:activeTab===id?"#fff":"#5a7a9a",borderBottom:activeTab===id?"2px solid #4bc99a":"2px solid transparent",whiteSpace:"nowrap",position:"relative" }}>
+            {label}{id==="import"&&pendingBills.length>0&&<span style={{ position:"absolute",top:5,right:3,width:7,height:7,background:"#f07030",borderRadius:"50%" }} />}
+          </button>))}
+        </div>
+      </div>
+      <div style={{ maxWidth:1200,margin:"0 auto",padding:"22px 32px 60px" }}>
+        {activeTab==="overview" && <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:20 }} className="fade-in">
+          <div style={{ gridColumn:"1/-1", display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+            <HomePhotoCard compact photo={data.txPhoto} label={data.txPhotoLabel||"Texas Home"} color="#2d9e72" emoji="🤠" onUpload={handleTxPhoto} onLabelChange={handleTxLabel} />
+            <HomePhotoCard compact photo={data.arPhoto} label={data.arPhotoLabel||"Arkansas Home"} color="#c44b00" emoji="🏔️" onUpload={handleArPhoto} onLabelChange={handleArLabel} />
+          </div>
+          <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,padding:22,border:"1px solid rgba(255,255,255,0.08)" }}>
+            <h3 style={{ margin:"0 0 16px",fontFamily:"'Playfair Display', serif",fontSize:17 }}>Spending Breakdown</h3>
+            <SVGDonutChart data={pieData} />
+            <div style={{ display:"flex",justifyContent:"center",gap:16,marginTop:12 }}>
+              {[["#2d9e72","Texas"],["#c44b00","Arkansas"],["#2b5fb0","Shared"]].map(([c,l])=>(<div key={l} style={{ display:"flex",alignItems:"center",gap:6 }}><div style={{ width:10,height:10,borderRadius:2,background:c }} /><span style={{ fontSize:11,fontFamily:"'DM Mono', monospace",color:"#7ab3e8" }}>{l}</span></div>))}
+            </div>
+          </div>
+          <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,padding:22,border:"1px solid rgba(255,255,255,0.08)" }}>
+            <h3 style={{ margin:"0 0 16px",fontFamily:"'Playfair Display', serif",fontSize:17 }}>Cost by Category</h3>
+            <SVGBarChart data={barData} />
+          </div>
+          <div style={{ gridColumn:"1/-1",background:"rgba(255,255,255,0.04)",borderRadius:16,padding:22,border:"1px solid rgba(255,255,255,0.08)" }}>
+            <h3 style={{ margin:"0 0 14px",fontFamily:"'Playfair Display', serif",fontSize:17 }}>State-by-State Summary</h3>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14 }}>
+              {[{ label:"🤠 Texas Home",total:txTotal,color:"#2d9e72",expenses:data.txExpenses },{ label:"🏔️ Arkansas Home",total:arTotal,color:"#c44b00",expenses:data.arExpenses },{ label:"🏠 Shared",total:sharedTotal,color:"#2b5fb0",expenses:data.sharedExpenses }].map(col=>(<div key={col.label} style={{ background:"rgba(255,255,255,0.04)",borderRadius:12,padding:14 }}>
+                <div style={{ color:col.color,fontFamily:"'DM Mono', monospace",fontSize:11,marginBottom:10 }}>{col.label}</div>
+                {Object.entries(col.expenses).filter(([,v])=>v>0).map(([k,v])=>(<div key={k} style={{ display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:12,borderBottom:"1px solid rgba(255,255,255,0.05)" }}><span style={{ color:"#8a9ab0" }}>{CATEGORY_LABELS[k]}</span><span style={{ fontFamily:"'DM Mono', monospace",color:"#c8d8e8" }}>{fmt(v*mult)}</span></div>))}
+                <div style={{ display:"flex",justifyContent:"space-between",marginTop:8,paddingTop:6,borderTop:`1px solid ${col.color}40` }}><span style={{ fontWeight:600,fontSize:12 }}>Total</span><span style={{ fontFamily:"'DM Mono', monospace",color:col.color,fontWeight:700 }}>{fmt(col.total*mult)}</span></div>
+              </div>))}
+            </div>
+          </div>
+        </div>}
+
+        {activeTab==="import" && <div className="fade-in">
+          <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:22 }}>
+            <div style={{ width:44,height:44,background:"rgba(75,201,154,0.15)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22 }}>📥</div>
+            <div><h2 style={{ margin:0,fontFamily:"'Playfair Display', serif" }}>AI Bill Import</h2><p style={{ margin:0,fontSize:12,color:"#7ab3e8",fontFamily:"'DM Mono', monospace" }}>Upload PDFs · or scan Gmail automatically</p></div>
+          </div>
+          <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,padding:20,border:"1px solid rgba(255,255,255,0.1)",marginBottom:20 }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                <div style={{ width:40,height:40,background:"#fff",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0 }}>
+                  <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                </div>
+                <div><div style={{ fontFamily:"'Playfair Display', serif",fontSize:15,fontWeight:600 }}>Gmail Auto-Scan</div><div style={{ fontSize:11,color:"#5a7a9a",fontFamily:"'DM Mono', monospace",marginTop:2 }}>{gmailConnected ? "Connected: " + gmailEmail : "Scan inbox for bill emails automatically"}</div></div>
+              </div>
+              <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+                {gmailConnected ? (<>
+                  <button onClick={()=>handleGmailScan()} disabled={gmailScanning} style={{ padding:"8px 16px",background:"linear-gradient(135deg,#1a6b4a,#2d9e72)",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono', monospace",fontSize:11,cursor:"pointer",opacity:gmailScanning?0.6:1 }}>{gmailScanning ? "SCANNING…" : "🔍 SCAN NOW"}</button>
+                  <button onClick={handleGmailDisconnect} style={{ padding:"8px 12px",background:"rgba(224,64,64,0.1)",border:"1px solid rgba(224,64,64,0.3)",borderRadius:8,color:"#e04040",fontFamily:"'DM Mono', monospace",fontSize:11,cursor:"pointer" }}>Disconnect</button>
+                </>) : <button onClick={handleGmailConnect} style={{ padding:"8px 20px",background:"#4285F4",border:"none",borderRadius:8,color:"#fff",fontFamily:"'DM Mono', monospace",fontSize:11,cursor:"pointer" }}>CONNECT GMAIL</button>}
+              </div>
+            </div>
+          </div>
+          <div onClick={()=>fileRef.current?.click()} style={{ border:"2px dashed rgba(75,201,154,0.35)",borderRadius:16,padding:"44px 32px",textAlign:"center",cursor:"pointer",marginBottom:22,background:"rgba(75,201,154,0.04)" }}>
+            {parsing ? <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:12 }}><Spinner /><div style={{ fontFamily:"'DM Mono', monospace",fontSize:13,color:"#4bc99a" }}>Reading bills with AI…</div></div>
+              : <><div style={{ fontSize:44,marginBottom:10 }}>📄</div><div style={{ fontFamily:"'Playfair Display', serif",fontSize:19,marginBottom:5 }}>Drop PDF bills here or click to browse</div><div style={{ fontSize:12,color:"#5a7a9a",fontFamily:"'DM Mono', monospace" }}>Electric · Mortgage · Insurance · Subscriptions</div></>}
+          </div>
+          {parseError && <div style={{ background:"rgba(224,64,64,0.1)",border:"1px solid rgba(224,64,64,0.3)",borderRadius:10,padding:"12px 16px",color:"#e04040",fontSize:13,marginBottom:14 }}>{parseError}</div>}
+          {pendingBills.length>0 && <div>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
+              <h3 style={{ margin:0,fontFamily:"'Playfair Display', serif",fontSize:17 }}>Review & Confirm ({pendingBills.length})</h3>
+            </div>
+            {pendingBills.map(b=><PendingCard key={b.id} bill={b} />)}
+          </div>}
+          {!pendingBills.length&&!parsing&&<div style={{ textAlign:"center",color:"#3a5a7a",fontFamily:"'DM Mono', monospace",fontSize:13,marginTop:8 }}>No bills pending. Upload PDFs above to get started.</div>}
+        </div>}
+
+        {activeTab==="history" && <div className="fade-in">
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18 }}>
+            <h2 style={{ margin:0,fontFamily:"'Playfair Display', serif" }}>Bill History</h2>
+            {(data.billHistory||[]).length>0&&<button onClick={()=>setData(d=>({...d,billHistory:[]}))} style={{ padding:"6px 14px",background:"rgba(224,64,64,0.1)",border:"1px solid rgba(224,64,64,0.3)",borderRadius:8,color:"#e04040",fontFamily:"'DM Mono', monospace",fontSize:11,cursor:"pointer" }}>Clear History</button>}
+          </div>
+          {(data.billHistory||[]).length===0 ? <div style={{ textAlign:"center",padding:"60px 20px",color:"#3a5a7a",fontFamily:"'DM Mono', monospace" }}><div style={{ fontSize:40,marginBottom:12 }}>📋</div>No bills imported yet.</div>
+            : <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+              {(data.billHistory||[]).map((bill,i)=>(<div key={i} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(255,255,255,0.04)",borderRadius:12,padding:"13px 18px",border:"1px solid rgba(255,255,255,0.07)" }}>
+                <div style={{ display:"flex",alignItems:"center",gap:14 }}><StateBadge state={bill.state} /><div><div style={{ fontFamily:"'Playfair Display', serif",fontSize:14,fontWeight:600 }}>{bill.vendor}</div><div style={{ fontSize:11,color:"#5a7a9a",fontFamily:"'DM Mono', monospace",marginTop:1 }}>{CATEGORY_LABELS[bill.category]} · {bill.confirmedAt?new Date(bill.confirmedAt).toLocaleDateString():""}</div></div></div>
+                <div style={{ fontFamily:"'DM Mono', monospace",fontSize:17,fontWeight:700,color:"#4bc99a" }}>${Number(bill.amount).toFixed(2)}</div>
+              </div>))}
+            </div>}
+        </div>}
+
+        {activeTab==="texas" && <div style={{ maxWidth:520 }} className="fade-in">
+          <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:18 }}>
+            <div style={{ width:40,height:40,background:"rgba(45,158,114,0.2)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}>🤠</div>
+            <div><h2 style={{ margin:0,fontFamily:"'Playfair Display', serif" }}>Texas Home</h2><p style={{ margin:0,fontSize:11,color:"#4bc99a",fontFamily:"'DM Mono', monospace" }}>No state income tax</p></div>
+          </div>
+          <HomePhotoCard photo={data.txPhoto} label={data.txPhotoLabel||"Texas Home"} color="#2d9e72" emoji="🤠" onUpload={handleTxPhoto} onLabelChange={handleTxLabel} />
+          <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,padding:22,border:"1px solid rgba(45,158,114,0.2)" }}>
+            {Object.entries(data.txExpenses).map(([k,v])=><InputRow key={k} label={CATEGORY_LABELS[k]} section="txExpenses" field={k} value={v} />)}
+            <div style={{ display:"flex",justifyContent:"space-between",marginTop:14,paddingTop:10,borderTop:"2px solid rgba(45,158,114,0.3)" }}><span style={{ fontWeight:700 }}>Monthly Total</span><span style={{ fontFamily:"'DM Mono', monospace",color:"#4bc99a",fontSize:18,fontWeight:700 }}>{fmt(txTotal)}</span></div>
+          </div>
+        </div>}
+
+        {activeTab==="arkansas" && <div style={{ maxWidth:520 }} className="fade-in">
+          <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:18 }}>
+            <div style={{ width:40,height:40,background:"rgba(196,75,0,0.2)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}>🏔️</div>
+            <div><h2 style={{ margin:0,fontFamily:"'Playfair Display', serif" }}>Arkansas Home</h2><p style={{ margin:0,fontSize:11,color:"#f07030",fontFamily:"'DM Mono', monospace" }}>State income tax on AR-allocated income</p></div>
+          </div>
+          <HomePhotoCard photo={data.arPhoto} label={data.arPhotoLabel||"Arkansas Home"} color="#c44b00" emoji="🏔️" onUpload={handleArPhoto} onLabelChange={handleArLabel} />
+          <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,padding:22,border:"1px solid rgba(196,75,0,0.2)" }}>
+            {Object.entries(data.arExpenses).map(([k,v])=><InputRow key={k} label={CATEGORY_LABELS[k]} section="arExpenses" field={k} value={v} />)}
+            <div style={{ display:"flex",justifyContent:"space-between",marginTop:14,paddingTop:10,borderTop:"2px solid rgba(196,75,0,0.3)" }}><span style={{ fontWeight:700 }}>Monthly Total</span><span style={{ fontFamily:"'DM Mono', monospace",color:"#f07030",fontSize:18,fontWeight:700 }}>{fmt(arTotal)}</span></div>
+          </div>
+        </div>}
+
+        {activeTab==="shared" && <div style={{ maxWidth:520 }} className="fade-in">
+          <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:18 }}>
+            <div style={{ width:40,height:40,background:"rgba(43,95,176,0.2)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}>🏠</div>
+            <div><h2 style={{ margin:0,fontFamily:"'Playfair Display', serif" }}>Shared Expenses</h2><p style={{ margin:0,fontSize:11,color:"#7ab3e8",fontFamily:"'DM Mono', monospace" }}>Lifestyle costs across both residences</p></div>
+          </div>
+          <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,padding:22,border:"1px solid rgba(43,95,176,0.2)" }}>
+            {Object.entries(data.sharedExpenses).map(([k,v])=><InputRow key={k} label={CATEGORY_LABELS[k]} section="sharedExpenses" field={k} value={v} />)}
+            <div style={{ display:"flex",justifyContent:"space-between",marginTop:14,paddingTop:10,borderTop:"2px solid rgba(43,95,176,0.3)" }}><span style={{ fontWeight:700 }}>Monthly Total</span><span style={{ fontFamily:"'DM Mono', monospace",color:"#7ab3e8",fontSize:18,fontWeight:700 }}>{fmt(sharedTotal)}</span></div>
+          </div>
+        </div>}
+
+        {activeTab==="taxes" && <div style={{ maxWidth:580 }} className="fade-in">
+          <h2 style={{ fontFamily:"'Playfair Display', serif",marginTop:0 }}>Tax Estimate</h2>
+          <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,padding:22,border:"1px solid rgba(255,255,255,0.08)",marginBottom:18 }}>
+            <div style={{ marginBottom:18 }}>
+              <label style={{ fontSize:11,color:"#7ab3e8",fontFamily:"'DM Mono', monospace",letterSpacing:1 }}>GROSS HOUSEHOLD INCOME (ANNUAL)</label>
+              <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:8 }}><span style={{ color:"#7ab3e8" }}>$</span><input type="number" value={data.grossIncome} onChange={e=>setData(d=>({...d,grossIncome:Number(e.target.value)||0}))} style={{ background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:8,color:"#fff",padding:"9px 14px",fontSize:18,fontFamily:"'DM Mono', monospace",outline:"none",width:200 }} /></div>
+            </div>
+            <div>
+              <label style={{ fontSize:11,color:"#7ab3e8",fontFamily:"'DM Mono', monospace",letterSpacing:1 }}>INCOME ALLOCATED TO ARKANSAS: {data.arIncomeAllocation}%</label>
+              <input type="range" min={0} max={100} value={data.arIncomeAllocation} onChange={e=>setData(d=>({...d,arIncomeAllocation:Number(e.target.value)}))} style={{ width:"100%",accentColor:"#f07030",marginTop:8,display:"block" }} />
+              <div style={{ display:"flex",justifyContent:"space-between",fontSize:10,color:"#5a7a9a",fontFamily:"'DM Mono', monospace",marginTop:4 }}><span>0% (all TX)</span><span>50/50</span><span>100% AR</span></div>
+            </div>
+          </div>
+          <div style={{ background:"rgba(255,255,255,0.04)",borderRadius:16,padding:22,border:"1px solid rgba(255,255,255,0.08)" }}>
+            {[
+              { label:"Texas State Income Tax", value:0, note:"No state income tax 🎉", color:"#4bc99a" },
+              { label:`AR State Tax (${data.arIncomeAllocation}% alloc.)`, value:arTaxAnnual, note:`On $${Math.round(arAllocated).toLocaleString()} AR income`, color:"#f07030" },
+              { label:"FICA (SS + Medicare)", value:ficaAnnual, note:"7.65% federal payroll", color:"#7ab3e8" },
+              { label:"Total Estimated Tax", value:totalTaxAnn, note:"Federal income tax not included", color:"#fff", border:true },
+              { label:"Est. Annual Net", value:data.grossIncome-totalTaxAnn, note:"After state tax + FICA", color:"#4bc99a", border:true },
+            ].map(row=>(<div key={row.label} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderTop:row.border?"2px solid rgba(255,255,255,0.12)":"1px solid rgba(255,255,255,0.06)" }}>
+              <div><div style={{ fontSize:13,color:"#c8d8e8" }}>{row.label}</div><div style={{ fontSize:11,color:"#5a7a9a",marginTop:2 }}>{row.note}</div></div>
+              <div style={{ fontFamily:"'DM Mono', monospace",color:row.color,fontWeight:row.border?700:400,fontSize:row.border?17:14 }}>{row.value===0?"$0":fmt(row.value/12,isAnnual)}</div>
+            </div>))}
+            <p style={{ fontSize:11,color:"#5a7a9a",marginTop:14,padding:"10px 12px",background:"rgba(255,255,255,0.04)",borderRadius:8 }}>⚠️ Estimate only. Consult a tax professional for dual-residency filings.</p>
+          </div>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+async function hashPw(pw) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function mountApp() {
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  if (!window.__budgetMounted) {
+    window.__budgetMounted = true;
+    ReactDOM.render(React.createElement(AuthWrapper), document.getElementById("app"));
+  }
+}
+
+window.checkBudgetPassword = async function() {
+  const pw = document.getElementById("budget-pw").value;
+  if (!pw) return;
+  const hash = await hashPw(pw);
+  const stored = localStorage.getItem("hunter_pw_hash");
+  const defaultHash = await hashPw("hunter2025");
+  const valid = stored || defaultHash;
+  if (hash === valid) {
+    if (!stored) localStorage.setItem("hunter_pw_hash", defaultHash);
+    sessionStorage.setItem("hunter_budget_auth", "1");
+    mountApp();
+  } else {
+    document.getElementById("budget-pw-error").style.display = "block";
+    document.getElementById("budget-pw").value = "";
+    setTimeout(() => document.getElementById("budget-pw-error").style.display = "none", 3000);
+  }
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const pwInput = document.getElementById("budget-pw");
+  if (pwInput) pwInput.addEventListener("keydown", e => { if (e.key === "Enter") window.checkBudgetPassword(); });
+  const inIframe = window.self !== window.top;
+  const alreadyAuthed = sessionStorage.getItem("hunter_budget_auth") === "1";
+  if (inIframe || alreadyAuthed) {
+    sessionStorage.setItem("hunter_budget_auth", "1");
+    mountApp();
+  }
+});
+
+function AuthWrapper() {
+  const [authed] = React.useState(true);
+  const user = { email: "family@hunter.com" };
+  const handleLogout = () => {
+    sessionStorage.removeItem("hunter_budget_auth");
+    window.__budgetMounted = false;
+    document.getElementById("login-screen").style.display = "flex";
+    document.getElementById("app").style.display = "none";
+    document.getElementById("budget-pw").value = "";
+  };
+  if (!authed) return null;
+  return <App user={user} onLogout={handleLogout} />;
+}
+</script>
+
+<img id="tx-photo-data" src="" style="display:none" alt="tx" />
+<img id="ar-photo-data" src="" style="display:none" alt="ar" />
+</body>
+</html>
